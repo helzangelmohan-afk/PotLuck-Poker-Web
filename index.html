@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Potluck Poker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-12">
+
+    <!-- Header & Auth Navbar -->
+    <header class="bg-slate-800 border-b border-slate-700 p-4 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold text-amber-400">♠️ Potluck Poker</h1>
+                <span id="roleBadge" class="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300">Role: Visitor</span>
+            </div>
+            <div id="authContainer">
+                <button id="loginBtn" onclick="openAuthModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded-lg text-sm font-semibold">Login</button>
+                <div id="userInfo" class="hidden flex items-center space-x-2">
+                    <span id="userEmail" class="text-xs text-slate-400"></span>
+                    <button onclick="logout()" class="bg-slate-700 hover:bg-slate-600 text-xs px-2 py-1 rounded">Logout</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="max-w-4xl mx-auto p-4 flex space-x-2 border-b border-slate-800 overflow-x-auto">
+        <button onclick="switchTab('games')" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-amber-500 text-slate-950" id="tab-games">Games</button>
+        <button onclick="switchTab('leaderboard')" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800" id="tab-leaderboard">Leaderboard</button>
+        <button onclick="switchTab('potSplitter')" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800" id="tab-potSplitter">Pot Splitter</button>
+        <button onclick="switchTab('approvals')" class="tab-btn hidden px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800" id="tab-approvals">Approvals (<span id="approvalCount">0</span>)</button>
+        <button onclick="switchTab('adminManager')" class="tab-btn hidden px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800" id="tab-adminManager">Manage Admins</button>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="max-w-4xl mx-auto p-4 space-y-6">
+
+        <!-- GAMES TAB -->
+        <section id="view-games" class="tab-content space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold">Game History</h2>
+                <button id="createGameBtn" onclick="openCreateGameModal()" class="hidden bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold">+ New Game</button>
+            </div>
+            <div id="gamesList" class="space-y-3">
+                <p class="text-slate-500 text-sm">Loading games...</p>
+            </div>
+        </section>
+
+        <!-- LEADERBOARD TAB -->
+        <section id="view-leaderboard" class="tab-content hidden space-y-4">
+            <h2 class="text-lg font-bold">Leaderboard & Stats</h2>
+            <div id="leaderboardList" class="bg-slate-800 rounded-xl p-4 border border-slate-700 divide-y divide-slate-700">
+                <p class="text-slate-500 text-sm">Loading stats...</p>
+            </div>
+        </section>
+
+        <!-- POT SPLITTER TAB -->
+        <section id="view-potSplitter" class="tab-content hidden space-y-4">
+            <h2 class="text-lg font-bold">Side Pot Calculator</h2>
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-4">
+                <p class="text-xs text-slate-400">Calculate main and side pots for all-in scenarios.</p>
+                <div id="potInputs" class="space-y-2">
+                    <div class="flex space-x-2">
+                        <input type="text" placeholder="Player Name" class="pot-player bg-slate-900 border border-slate-700 p-2 rounded text-sm w-1/2">
+                        <input type="number" placeholder="Stack/Bet Amount" class="pot-stack bg-slate-900 border border-slate-700 p-2 rounded text-sm w-1/2">
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="addPotPlayerInput()" class="bg-slate-700 hover:bg-slate-600 text-xs px-3 py-2 rounded">+ Add Player</button>
+                    <button onclick="calculatePots()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold text-xs px-4 py-2 rounded">Calculate Pots</button>
+                </div>
+                <div id="potResults" class="p-3 bg-slate-900 rounded border border-slate-700 text-sm font-mono text-amber-400 hidden"></div>
+            </div>
+        </section>
+
+        <!-- APPROVALS TAB (Super Admin Only) -->
+        <section id="view-approvals" class="tab-content hidden space-y-4">
+            <h2 class="text-lg font-bold text-amber-400">Pending Game Deletions</h2>
+            <div id="approvalsList" class="space-y-3">
+                <p class="text-slate-500 text-sm">No pending deletion approvals.</p>
+            </div>
+        </section>
+
+        <!-- MANAGE ADMINS TAB (Super Admin Only) -->
+        <section id="view-adminManager" class="tab-content hidden space-y-4">
+            <h2 class="text-lg font-bold text-amber-400">Manage Admins</h2>
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-3">
+                <div class="flex space-x-2">
+                    <input type="email" id="newAdminEmail" placeholder="Enter user email" class="bg-slate-900 border border-slate-700 p-2 rounded text-sm flex-1">
+                    <button onclick="addAdminRole()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold text-sm px-4 py-2 rounded">Add Admin</button>
+                </div>
+            </div>
+            <div id="adminsList" class="bg-slate-800 rounded-xl p-4 border border-slate-700 divide-y divide-slate-700"></div>
+        </section>
+
+    </main>
+
+    <!-- AUTH MODAL -->
+    <div id="authModal" class="fixed inset-0 bg-black/70 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-xl w-full max-w-sm space-y-4">
+            <h3 class="text-lg font-bold text-amber-400" id="authModalTitle">Login</h3>
+            <input type="email" id="authEmail" placeholder="Email" class="w-full bg-slate-900 border border-slate-700 p-2 rounded text-sm">
+            <input type="password" id="authPassword" placeholder="Password" class="w-full bg-slate-900 border border-slate-700 p-2 rounded text-sm">
+            <div class="flex space-x-2">
+                <button onclick="handleAuthSubmit()" class="flex-1 bg-amber-500 text-slate-950 font-semibold py-2 rounded text-sm">Submit</button>
+                <button onclick="toggleAuthMode()" id="toggleAuthBtn" class="text-xs text-slate-400 underline">Switch to Register</button>
+            </div>
+            <button onclick="closeAuthModal()" class="w-full text-xs text-slate-500">Cancel</button>
+        </div>
+    </div>
+
+    <!-- CREATE GAME MODAL -->
+    <div id="gameModal" class="fixed inset-0 bg-black/70 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-xl w-full max-w-md space-y-4 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg font-bold text-amber-400">Record New Game</h3>
+            <input type="text" id="gameTitle" placeholder="Game Name / Title" class="w-full bg-slate-900 border border-slate-700 p-2 rounded text-sm">
+            <div id="gamePlayersInput" class="space-y-2">
+                <label class="text-xs text-slate-400">Players (Name & Buy-in)</label>
+                <div class="flex space-x-2">
+                    <input type="text" placeholder="Player Name" class="g-name bg-slate-900 border border-slate-700 p-2 rounded text-sm w-1/2">
+                    <input type="number" placeholder="Buy-in Amount" class="g-buyin bg-slate-900 border border-slate-700 p-2 rounded text-sm w-1/2">
+                </div>
+            </div>
+            <button onclick="addGamePlayerRow()" class="bg-slate-700 text-xs px-3 py-1.5 rounded">+ Add Player</button>
+            <div class="flex space-x-2 pt-4">
+                <button onclick="saveGame()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 font-semibold py-2 rounded text-sm">Save Game</button>
+                <button onclick="closeGameModal()" class="bg-slate-700 py-2 px-4 rounded text-sm">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE INIT & LOGIC -->
+    <script>
+        // 1. Firebase Config Setup
+        const firebaseConfig = {
+            apiKey: "AIzaSyCfxxUrfWws1872Suk9_0G5t2jehflZy7k",
+            authDomain: "potluckpoker-d7633.firebaseapp.com",
+            projectId: "potluckpoker-d7633",
+            storageBucket: "potluckpoker-d7633.firebasestorage.app",
+            messagingSenderId: "459972723823",
+            appId: "1:459972723823:web:98dfe374afaf215cf6799a",
+            measurementId: "G-C5DCD86MTF"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // App State
+        let currentUser = null;
+        let userRole = 'visitor'; // 'superadmin', 'admin', or 'visitor'
+        let isRegistering = false;
+
+        // Auto-assign first user as Super Admin if database role empty
+        auth.onAuthStateChanged(async (user) => {
+            currentUser = user;
+            if (user) {
+                document.getElementById('userEmail').innerText = user.email;
+                document.getElementById('loginBtn').classList.add('hidden');
+                document.getElementById('userInfo').classList.remove('hidden');
+
+                // Fetch User Role from Firestore
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                if (userDoc.exists) {
+                    userRole = userDoc.data().role || 'visitor';
+                } else {
+                    // Check if any superadmin exists
+                    const superAdmins = await db.collection('users').where('role', '==', 'superadmin').get();
+                    if (superAdmins.empty) {
+                        userRole = 'superadmin'; // First user becomes Super Admin
+                    } else {
+                        userRole = 'visitor';
+                    }
+                    await db.collection('users').doc(user.uid).set({
+                        email: user.email,
+                        role: userRole
+                    });
+                }
+            } else {
+                userRole = 'visitor';
+                document.getElementById('loginBtn').classList.remove('hidden');
+                document.getElementById('userInfo').classList.add('hidden');
+            }
+
+            updateRoleUI();
+            loadGames();
+            loadLeaderboard();
+            if (userRole === 'superadmin') {
+                loadApprovals();
+                loadAdminsList();
+            }
+        });
+
+        // Update UI Based on Role
+        function updateRoleUI() {
+            document.getElementById('roleBadge').innerText = `Role: ${userRole.toUpperCase()}`;
+            
+            // Show/Hide Super Admin Tabs
+            if (userRole === 'superadmin') {
+                document.getElementById('tab-approvals').classList.remove('hidden');
+                document.getElementById('tab-adminManager').classList.remove('hidden');
+            } else {
+                document.getElementById('tab-approvals').classList.add('hidden');
+                document.getElementById('tab-adminManager').classList.add('hidden');
+            }
+
+            // Show/Hide Create Game Button
+            if (userRole === 'admin' || userRole === 'superadmin') {
+                document.getElementById('createGameBtn').classList.remove('hidden');
+            } else {
+                document.getElementById('createGameBtn').classList.add('hidden');
+            }
+        }
+
+        // Navigation
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('bg-amber-500', 'text-slate-950');
+                el.classList.add('text-slate-400');
+            });
+
+            document.getElementById(`view-${tabName}`).classList.remove('hidden');
+            const activeTabBtn = document.getElementById(`tab-${tabName}`);
+            activeTabBtn.classList.add('bg-amber-500', 'text-slate-950');
+            activeTabBtn.classList.remove('text-slate-400');
+        }
+
+        // Auth Functions
+        function openAuthModal() { document.getElementById('authModal').classList.remove('hidden'); }
+        function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); }
+        
+        function toggleAuthMode() {
+            isRegistering = !isRegistering;
+            document.getElementById('authModalTitle').innerText = isRegistering ? 'Register' : 'Login';
+            document.getElementById('toggleAuthBtn').innerText = isRegistering ? 'Switch to Login' : 'Switch to Register';
+        }
+
+        async function handleAuthSubmit() {
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            try {
+                if (isRegistering) {
+                    await auth.createUserWithEmailAndPassword(email, password);
+                } else {
+                    await auth.signInWithEmailAndPassword(email, password);
+                }
+                closeAuthModal();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        function logout() { auth.signOut(); }
+
+        // Game Recording Logic
+        function openCreateGameModal() { document.getElementById('gameModal').classList.remove('hidden'); }
+        function closeGameModal() { document.getElementById('gameModal').classList.add('hidden'); }
+
+        function addGamePlayerRow() {
+            const div = document.createElement('div');
+            div.className = 'flex space-x-2';
+            div.innerHTML = `
+                <input type="text" placeholder="Player Name" class="g-name bg-slate-900 border border-slate-700 p-2 rounded text-sm w-1/2">
+                <input type="number" placeholder="Buy-in Amount" class="g-buyin bg-slate-900 border border-slate-700 p-2 rounded text-sm w-1/2">
+            `;
+            document.getElementById('gamePlayersInput').appendChild(div);
+        }
+
+        async function saveGame() {
+            const title = document.getElementById('gameTitle').value;
+            const names = document.querySelectorAll('.g-name');
+            const buyins = document.querySelectorAll('.g-buyin');
+
+            let players = [];
+            names.forEach((el, idx) => {
+                if (el.value) {
+                    players.push({ name: el.value, buyin: Number(buyins[idx].value || 0) });
+                }
+            });
+
+            if (!title || players.length === 0) return alert('Please enter a title and at least one player.');
+
+            await db.collection('games').add({
+                title: title,
+                createdById: currentUser.uid,
+                createdByEmail: currentUser.email,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                players: players,
+                status: 'active'
+            });
+
+            closeGameModal();
+            loadGames();
+            loadLeaderboard();
+        }
+
+        // Load Games from Firestore
+        function loadGames() {
+            db.collection('games').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+                const list = document.getElementById('gamesList');
+                list.innerHTML = '';
+
+                snapshot.forEach(doc => {
+                    const game = doc.data();
+                    const isOwner = currentUser && game.createdById === currentUser.uid;
+                    const canDelete = userRole === 'superadmin' || isOwner;
+
+                    let actionButtons = '';
+                    if (game.status === 'DELETE_PENDING') {
+                        actionButtons = `<span class="text-xs text-amber-400 italic">Deletion Pending Approval</span>`;
+                    } else if (canDelete) {
+                        actionButtons = `<button onclick="requestGameDelete('${doc.id}', '${game.createdById}')" class="text-xs bg-red-900/40 text-red-400 hover:bg-red-900/60 px-2 py-1 rounded">Delete</button>`;
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = 'bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center';
+                    card.innerHTML = `
+                        <div>
+                            <h3 class="font-bold text-slate-200">${game.title}</h3>
+                            <p class="text-xs text-slate-400">Created by: ${game.createdByEmail} • Players: ${game.players ? game.players.length : 0}</p>
+                        </div>
+                        <div>${actionButtons}</div>
+                    `;
+                    list.appendChild(card);
+                });
+            });
+        }
+
+        // Handle Delete Requests (Admin vs Super Admin)
+        async function requestGameDelete(gameId, createdById) {
+            if (userRole === 'superadmin') {
+                if (confirm('Permanently delete this game?')) {
+                    await db.collection('games').doc(gameId).delete();
+                }
+            } else if (userRole === 'admin') {
+                if (confirm('Request Super Admin to approve deletion of this game?')) {
+                    await db.collection('games').doc(gameId).update({ status: 'DELETE_PENDING' });
+                    alert('Deletion request sent to Super Admin.');
+                }
+            }
+        }
+
+        // Approvals (Super Admin Only)
+        function loadApprovals() {
+            db.collection('games').where('status', '==', 'DELETE_PENDING').onSnapshot(snapshot => {
+                document.getElementById('approvalCount').innerText = snapshot.size;
+                const list = document.getElementById('approvalsList');
+                list.innerHTML = snapshot.empty ? '<p class="text-slate-500 text-sm">No pending deletion approvals.</p>' : '';
+
+                snapshot.forEach(doc => {
+                    const game = doc.data();
+                    const item = document.createElement('div');
+                    item.className = 'bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center';
+                    item.innerHTML = `
+                        <div>
+                            <h4 class="font-bold">${game.title}</h4>
+                            <p class="text-xs text-slate-400">Requested by: ${game.createdByEmail}</p>
+                        </div>
+                        <div class="space-x-2">
+                            <button onclick="confirmDelete('${doc.id}')" class="bg-red-600 text-xs px-3 py-1.5 rounded font-semibold">Approve Delete</button>
+                            <button onclick="rejectDelete('${doc.id}')" class="bg-slate-700 text-xs px-3 py-1.5 rounded">Reject</button>
+                        </div>
+                    `;
+                    list.appendChild(item);
+                });
+            });
+        }
+
+        async function confirmDelete(gameId) { await db.collection('games').doc(gameId).delete(); }
+        async function rejectDelete(gameId) { await db.collection('games').doc(gameId).update({ status: 'active' }); }
+
+        // Manage Admins
+        async function addAdminRole() {
+            const email = document.getElementById('newAdminEmail').value.trim();
+            if (!email) return;
+
+            const snapshot = await db.collection('users').where('email', '==', email).get();
+            if (snapshot.empty) {
+                alert('User must register/log in once before being granted Admin status.');
+                return;
+            }
+
+            snapshot.forEach(async doc => {
+                await db.collection('users').doc(doc.id).update({ role: 'admin' });
+            });
+
+            document.getElementById('newAdminEmail').value = '';
+            alert(`${email} is now an Admin!`);
+            loadAdminsList();
+        }
+
+        function loadAdminsList() {
+            db.collection('users').where('role', 'in', ['admin', 'superadmin']).onSnapshot(snapshot => {
+                const list = document.getElementById('adminsList');
+                list.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const u = doc.data();
+                    const item = document.createElement('div');
+                    item.className = 'py-2 flex justify-between items-center text-sm';
+                    item.innerHTML = `<span>${u.email}</span><span class="text-xs text-amber-400 font-semibold">${u.role.toUpperCase()}</span>`;
+                    list.appendChild(item);
+                });
+            });
+        }
+
+        // Leaderboard Calculation
+        function loadLeaderboard() {
+            db.collection('games').onSnapshot(snapshot => {
+                let stats = {};
+                snapshot.forEach(doc => {
+                    const game = doc.data();
+                    if (game.players) {
+                        game.players.forEach(p => {
+                            if (!stats[p.name]) stats[p.name] = { games: 0, totalBuyin: 0 };
+                            stats[p.name].games += 1;
+                            stats[p.name].totalBuyin += Number(p.buyin || 0);
+                        });
+                    }
+                });
+
+                const list = document.getElementById('leaderboardList');
+                list.innerHTML = '';
+                Object.keys(stats).forEach(player => {
+                    const item = document.createElement('div');
+                    item.className = 'py-2 flex justify-between items-center text-sm';
+                    item.innerHTML = `
+                        <span class="font-semibold">${player}</span>
+                        <span class="text-xs text-slate-400">Games: ${stats[player].games} | Total Buy-ins: $${stats[player].totalBuyin}</span>
+                    `;
+                    list.appendChild(item);
+                });
+            });
+        }
+
+        // Pot Splitter Tool
+        function addPotPlayerInput() {
+            const div = document.createElement('div');
+            div.className = 'flex space-x-2';
+            div.innerHTML = `
+                <input type="text" placeholder="Player Name" class="pot-player bg-slate-900 border border-slate-700 p-2 rounded text-sm w-1/2">
+                <input type="number" placeholder="Stack/Bet Amount" class="pot-stack bg-slate-900 border border-slate-700 p-2 rounded text-sm w-1/2">
+            `;
+            document.getElementById('potInputs').appendChild(div);
+        }
+
+        function calculatePots() {
+            const players = document.querySelectorAll('.pot-player');
+            const stacks = document.querySelectorAll('.pot-stack');
+            
+            let data = [];
+            players.forEach((p, idx) => {
+                const val = Number(stacks[idx].value);
+                if (p.value && val > 0) data.push({ name: p.value, stack: val });
+            });
+
+            if (data.length === 0) return;
+
+            data.sort((a, b) => a.stack - b.stack);
+
+            let pots = [];
+            let prevStack = 0;
+
+            for (let i = 0; i < data.length; i++) {
+                let diff = data[i].stack - prevStack;
+                if (diff > 0) {
+                    let eligible = data.slice(i).map(x => x.name);
+                    let potAmount = diff * eligible.length;
+                    pots.push({ amount: potAmount, eligible: eligible });
+                    prevStack = data[i].stack;
+                }
+            }
+
+            let output = 'Main Pot: $' + (pots[0] ? pots[0].amount : 0) + ' (' + (pots[0] ? pots[0].eligible.join(', ') : '') + ')\n';
+            for (let i = 1; i < pots.length; i++) {
+                output += `Side Pot ${i}: $${pots[i].amount} (${pots[i].eligible.join(', ')})\n`;
+            }
+
+            const resDiv = document.getElementById('potResults');
+            resDiv.innerText = output;
+            resDiv.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
