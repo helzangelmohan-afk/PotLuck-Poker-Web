@@ -5,17 +5,17 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Potluck Poker — Build 18 (Firebase Multi-Role)</title>
   <!-- Link Manifest -->
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#121212">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d100c">
 
-<!-- Register Service Worker -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js');
+      navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Registration Failed:', err));
     });
   }
-</script> 
+</script>
+
   
 <style>
 :root{--bg:#0d100c;--card:#171b15;--card2:#20261d;--line:#30382d;--text:#f4f1e7;--muted:#a8ad9f;--lime:#d9ff4f;--green:#7ff0a3;--red:#ff817a;--orange:#ffb36b;--gold:#ffd700;--silver:#c0c0c0;--bronze:#cd7f32}
