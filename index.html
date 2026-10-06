@@ -1,493 +1,1512 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Potluck Poker - Build 18 (Firebase Edition)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <style>
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Potluck Poker — Build 18 (Firebase Multi-Role)</title>
+<style>
+:root{--bg:#0d100c;--card:#171b15;--card2:#20261d;--line:#30382d;--text:#f4f1e7;--muted:#a8ad9f;--lime:#d9ff4f;--green:#7ff0a3;--red:#ff817a;--orange:#ffb36b;--gold:#ffd700;--silver:#c0c0c0;--bronze:#cd7f32}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,sans-serif}
+.app{max-width:800px;margin:auto;padding:12px 12px 80px}
+.top,.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.logo{font-weight:900;font-size:22px}
+.logo b{color:var(--lime)}
+.pill{border:1px solid var(--line);padding:4px 8px;border-radius:999px;color:var(--muted);font-size:10px}
+
+/* Auth Bar Styles */
+.auth-bar{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin:10px 0 6px}
+.user-badge{display:flex;align-items:center;gap:8px;font-size:12px}
+.role-pill{font-size:9px;font-weight:800;text-transform:uppercase;padding:2px 6px;border-radius:999px;border:1px solid var(--line)}
+.role-superadmin{border-color:var(--gold);color:var(--gold);background:#312900}
+.role-admin{border-color:var(--lime);color:var(--lime);background:#1a2e15}
+.role-visitor{border-color:var(--muted);color:var(--muted);background:#171b15}
+
+/* Scrollable tabs */
+.tabs{display:flex;gap:6px;overflow-x:auto;margin:10px 0;scroll-behavior:smooth;padding-bottom:2px}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{white-space:nowrap;flex:0 0 auto}
+
+button{border:1px solid var(--line);background:#20251d;color:var(--text);padding:8px 12px;border-radius:11px;font-weight:700;min-height:38px;cursor:pointer;font-size:13px}
+button.primary{background:var(--lime);color:#10130c;border-color:var(--lime)}
+button.danger{background:#321a19;border-color:#63302e;color:#ffaaa5}
+button.accent{background:#1a2e22;border-color:#2a523a;color:var(--green)}
+button.warning{background:#382710;border-color:#61441c;color:var(--orange)}
+button.btn-sm{padding:4px 8px;min-height:28px;font-size:11px;border-radius:8px}
+
+button.btn-edit{padding:4px 8px;min-height:28px;font-size:11px;border-radius:8px;background:#252d21;border-color:#3a4734;color:var(--text);display:inline-flex;align-items:center;gap:3px}
+button.btn-copy{padding:4px 8px;min-height:28px;font-size:11px;border-radius:8px;background:#1e293b;border-color:#334155;color:#93c5fd;display:inline-flex;align-items:center;gap:3px}
+button.btn-delete{padding:4px 8px;min-height:28px;font-size:11px;border-radius:8px;background:#321a19;border-color:#63302e;color:#ffaaa5;display:inline-flex;align-items:center;gap:3px}
+button:disabled{opacity:.45}
+
+section{display:none}
+section.active{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:12px;margin-bottom:10px}
+.card.removed-row{opacity:0.45;filter:grayscale(0.5);pointer-events:none}
+.card.removed-row .restore-btn{pointer-events:auto;opacity:1}
+.card.sitting-out{opacity:0.65;border-style:dashed;border-color:var(--orange)}
+.eyebrow{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--lime);font-weight:800}
+
+/* Header Typography */
+h2{font-size:15px;font-weight:800;margin:3px 0 4px;letter-spacing:-0.3px}
+h3{font-size:13px;font-weight:700;margin:3px 0 4px}
+.game-heading{font-size:16px;font-weight:800;margin:2px 0 4px}
+.muted,.sub{color:var(--muted);font-size:11px;line-height:1.3}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.stats-4{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:8px}
+@media(min-width:600px){.stats-4{grid-template-columns:repeat(4,1fr)}}
+.stat{background:#11150f;border:1px solid var(--line);border-radius:10px;padding:8px}
+.stat small{display:block;color:var(--muted);font-size:9px}
+.stat strong{display:block;margin-top:2px;font-size:14px}
+.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.label{display:block;color:var(--muted);font-size:10px;margin:8px 0 3px}
+input,select,textarea{width:100%;min-height:38px;border-radius:10px;border:1px solid var(--line);background:#0f120e;color:var(--text);padding:8px 10px;font-size:13px}
+input[type="number"], input[type="text"], input[type="date"], input[type="email"], input[type="password"]{min-height:38px;padding:8px 10px}
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+textarea{min-height:60px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.who{display:flex;align-items:center;gap:8px}
+.avatar{width:32px;height:32px;border-radius:999px;background:#30382d;display:grid;place-items:center;font-weight:800;font-size:10px}
+.count{color:var(--lime);font-weight:800}
+.pos{color:var(--green)}
+.neg{color:var(--red)}
+.tx{display:flex;justify-content:space-between;gap:6px;padding:6px 0;border-bottom:1px solid var(--line);font-size:11px}
+.tx:last-child{border-bottom:0}
+.tag{font-size:9px;padding:3px 6px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.tag-out{border-color:var(--orange);color:var(--orange)}
+
+.modal{position:fixed;inset:0;background:#0009;display:none;align-items:flex-start;justify-content:center;padding:12px;z-index:4;overflow-y:auto}
+.modal.show{display:flex}
+.sheet{width:min(800px,100%);background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;max-height:90vh;overflow-y:auto;margin-top:10px}
+.toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:#f3f0e6;color:#12150e;border-radius:999px;padding:8px 14px;font-size:11px;font-weight:800;display:none;z-index:8}
+.toast.show{display:block}
+
+/* SETTLEMENT & CHIP QUICK BUTTONS */
+.settle-card-wrap{background:#11150f;border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px}
+.settle-row{display:grid;grid-template-columns:1fr 120px;gap:8px;align-items:center}
+.quick-chip-btns{display:flex;gap:4px;margin-top:6px;justify-content:flex-end}
+.quick-chip-btns button{padding:2px 6px;min-height:24px;font-size:10px;border-radius:6px;background:#1d241a;border-color:#34422e;color:var(--muted)}
+.quick-chip-btns button:hover{color:var(--lime);border-color:var(--lime)}
+
+.settle-card{background:#11150f;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:6px}
+.history-item{transition:border-color .2s}
+.history-item:hover{border-color:var(--lime)}
+.stat-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:12px}
+.stat-row:last-child{border-bottom:0}
+
+/* RANK BADGES FOR LEADERBOARD */
+.lb-rank{font-size:12px;font-weight:800;min-width:38px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;background:#11150f;border:1px solid var(--line);color:var(--muted);flex-shrink:0}
+.lb-rank.rank-1{background:#312900;border-color:var(--gold);color:var(--gold)}
+.lb-rank.rank-2{background:#22262b;border-color:var(--silver);color:var(--silver)}
+.lb-rank.rank-3{background:#2a1c12;border-color:var(--bronze);color:var(--bronze)}
+
+#addModal .label{font-size:11px;margin:10px 0 4px}
+#addModal textarea#newName{font-size:15px;padding:10px}
+#addModal .modal-subtext{font-size:12px;color:var(--muted);margin-top:4px}
+
+.legend-box-row{background:#11150f;border:1px solid var(--line);border-radius:10px;padding:6px 10px;margin-top:6px;display:flex;gap:10px;align-items:center;overflow-x:auto;font-size:10px;color:var(--muted);white-space:nowrap}
+.legend-box-row::-webkit-scrollbar{display:none}
+.lb-single-row{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%}
+.lb-metrics-inline{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text);white-space:nowrap;margin:0 4px}
+.lb-metrics-inline span{background:#11150f;border:1px solid var(--line);padding:2px 5px;border-radius:5px;font-weight:700}
+
+/* PRESET CHIPS */
+.preset-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.chip-btn{background:#11150f;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .15s;min-height:34px}
+.chip-btn:hover{border-color:var(--lime);color:var(--lime)}
+.chip-btn.selected{background:var(--lime);color:#10130c;border-color:var(--lime)}
+.chip-btn .freq-tag{font-size:9px;background:#20261d;color:var(--muted);padding:2px 5px;border-radius:999px}
+.chip-btn.selected .freq-tag{background:#10130c;color:var(--lime)}
+</style>
+
+<!-- FIREBASE COMPAT SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen pb-20 font-sans selection:bg-amber-500 selection:text-slate-950">
+<body>
+<div class="app">
+<div class="top">
+  <div class="logo">POT<b>LUCK</b> 🃏</div>
+  <div class="pill">BUILD 18 · FIREBASE READY</div>
+</div>
 
-    <!-- Header & Auth Navbar -->
-    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 px-4 py-3 shadow-md">
-        <div class="max-w-md mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <span class="text-xl">♠️</span>
-                <div>
-                    <h1 class="font-black text-amber-400 tracking-wider text-base uppercase">Potluck Poker</h1>
-                    <span id="roleBadge" class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">Role: Visitor</span>
-                </div>
-            </div>
-            <div id="authContainer">
-                <button id="loginBtn" onclick="openAuthModal()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider transition">Login</button>
-                <div id="userInfo" class="hidden flex items-center space-x-2">
-                    <span id="userEmail" class="text-xs text-slate-400 max-w-[100px] truncate"></span>
-                    <button onclick="logout()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[10px] font-bold px-2 py-1 rounded">Logout</button>
-                </div>
-            </div>
+<!-- AUTH STATUS BAR -->
+<div class="auth-bar">
+  <div class="user-badge">
+    <span id="userEmailText">Checking Auth...</span>
+    <span id="userRoleBadge" class="role-pill role-visitor">VISITOR</span>
+  </div>
+  <div>
+    <button id="authBtn" class="btn-sm primary" onclick="toggleAuthModal()">Login</button>
+  </div>
+</div>
+
+<!-- NAVIGATION TABS -->
+<div class="tabs" id="tabContainer">
+  <button class="tab-btn primary admin-only" onclick="switchTab('create', this)">➕ Create Game</button>
+  <button class="tab-btn" onclick="switchTab('quick', this)">⚡ Quick View</button>
+  <button class="tab-btn admin-only" id="ledgerTabBtn" style="display:none" onclick="switchTab('ledger', this)">₹ Ledger & Logs</button>
+  <button class="tab-btn" onclick="switchTab('calc', this)">🧮 Calculator</button>
+  <button class="tab-btn" onclick="switchTab('leaderboard', this)">🏆 Leaderboard</button>
+  <button class="tab-btn" onclick="switchTab('overall', this)">📊 Overall Stats</button>
+  <button class="tab-btn" id="historyTabBtn" onclick="switchTab('history', this)">📜 History</button>
+  <button class="tab-btn superadmin-only" id="usersTabBtn" style="display:none" onclick="switchTab('users', this)">⚙️ Users</button>
+</div>
+
+<!-- 1. CREATE GAME TAB -->
+<section id="create" class="tab-section active admin-only">
+  <div class="card">
+    <div class="eyebrow">NEW SESSION</div>
+    <h2>Setup New Poker Game</h2>
+    <div class="grid">
+      <div><label class="label">Date</label><input id="gameDate" type="date"></div>
+      <div><label class="label">Game Title</label><input id="gameTitle" value="Mohans Poker Club"></div>
+    </div>
+    <div class="grid">
+      <div><label class="label">Buy-in Cash (₹)</label><input id="cash" type="number" value="1000"></div>
+      <div><label class="label">Chips per Buy-in</label><input id="chips" type="number" value="4000"></div>
+    </div>
+    <label class="label">Blinds</label>
+    <div class="two">
+      <input id="small" type="number" value="50" placeholder="Small Blind">
+      <input id="big" type="number" value="100" placeholder="Big Blind">
+    </div>
+    <div class="actions">
+      <button class="primary" onclick="startNewGame()" id="startBtn">Start Game Session</button>
+    </div>
+  </div>
+</section>
+
+<!-- 2. QUICK VIEW TAB -->
+<section id="quick" class="tab-section">
+  <div class="card">
+    <div class="eyebrow" id="quickGameEyebrow">ACTIVE SESSION</div>
+    <div class="game-heading" id="quickGameTitle">No Active Game</div>
+    <div class="sub" id="quickGameMeta">Create a game session to start adding players</div>
+    
+    <div class="actions admin-only" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--line)">
+      <button class="primary" onclick="openAddModal()" id="addPlayerBtn" disabled>+ Add Players</button>
+      <button class="accent" onclick="openSettleModal()" id="endSettleBtn" disabled>🏁 End & Settle</button>
+    </div>
+  </div>
+  <div id="quickPlayerList"></div>
+</section>
+
+<!-- 3. LEDGER & LOGS TAB -->
+<section id="ledger" class="tab-section admin-only">
+  <div class="card">
+    <div class="eyebrow">ACTIVE GAME TOTALS</div>
+    <h2>Financial Overview</h2>
+    <div class="stats">
+      <div class="stat"><small>Cash In</small><strong id="cashIn">₹0</strong></div>
+      <div class="stat"><small>Chips Issued</small><strong id="chipsIn">0</strong></div>
+      <div class="stat"><small>Active Players</small><strong id="activePlayerCount">0</strong></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="eyebrow">ADMIN ACTION LOGS</div>
+    <h2>Game Event Trail</h2>
+    <div id="ledgerList"></div>
+  </div>
+</section>
+
+<!-- 4. CALCULATOR TAB -->
+<section id="calc" class="tab-section">
+  <div class="card">
+    <div class="eyebrow">POT CALCULATOR</div>
+    <h2>Side Pot Splitter</h2>
+    <div class="sub">Enter individual player bets for an all-in hand to split main & side pots</div>
+    <div id="sidePotInputs" style="margin-top:10px">
+      <div class="two" style="margin-bottom:6px">
+        <input type="number" class="sp-input" placeholder="Player 1 Bet (Chips)">
+        <input type="number" class="sp-input" placeholder="Player 2 Bet (Chips)">
+      </div>
+      <div class="two" style="margin-bottom:6px">
+        <input type="number" class="sp-input" placeholder="Player 3 Bet (Chips)">
+        <input type="number" class="sp-input" placeholder="Player 4 Bet (Chips)">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="primary" onclick="calculateSidePots()">Calculate Pots</button>
+      <button onclick="addSidePotInput()">+ Add Player Field</button>
+    </div>
+    <div id="sidePotResult" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">CHIP CONVERTER</div>
+    <h2>Chips ↔ Cash Converter</h2>
+    <div class="sub">Quickly convert chip stacks to cash value or vice-versa</div>
+    <div class="two" style="margin-top:10px">
+      <div>
+        <label class="label">Rate: Cash per Buy-in (₹)</label>
+        <input id="calcRateCash" type="number" value="1000" oninput="runChipConvert()">
+      </div>
+      <div>
+        <label class="label">Rate: Chips per Buy-in</label>
+        <input id="calcRateChips" type="number" value="4000" oninput="runChipConvert()">
+      </div>
+    </div>
+    <div class="two" style="margin-top:8px">
+      <div>
+        <label class="label">Chips Count</label>
+        <input id="calcChipsInput" type="number" placeholder="e.g. 6000" oninput="runChipConvert('chips')">
+      </div>
+      <div>
+        <label class="label">Cash Equivalent (₹)</label>
+        <input id="calcCashInput" type="number" placeholder="e.g. 1500" oninput="runChipConvert('cash')">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. LEADERBOARD TAB -->
+<section id="leaderboard" class="tab-section">
+  <div class="card">
+    <div class="eyebrow">ALL-TIME RANKINGS</div>
+    <h2>Player Leaderboard</h2>
+    <div class="sub">Career performance across recorded game sessions</div>
+    
+    <div class="legend-box-row">
+      <span style="font-weight:800;color:var(--lime);margin-right:2px">LEGEND:</span>
+      <span>📅 Days</span>
+      <span>📈 Profit</span>
+      <span>📉 Loss</span>
+      <span>🤝 Break Even</span>
+    </div>
+  </div>
+  <div id="leaderboardList"></div>
+</section>
+
+<!-- 6. OVERALL STATS TAB -->
+<section id="overall" class="tab-section">
+  <div class="card">
+    <div class="eyebrow">HISTORICAL COMBINED METRICS</div>
+    <h2>Overall Poker Statistics</h2>
+    <div class="sub">Aggregated data across all recorded past sessions</div>
+    <div class="stats-4">
+      <div class="stat"><small>Poker Days</small><strong id="statPokerDays">0</strong></div>
+      <div class="stat"><small>Unique Players</small><strong id="statUniquePlayers">0</strong></div>
+      <div class="stat"><small>Total Buy-ins</small><strong id="statTotalBuyins">0</strong></div>
+      <div class="stat"><small>Value of Buy-ins</small><strong id="statValueBuyins">₹0</strong></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">MONEY FLOW</div>
+    <h2>Financial Summary</h2>
+    <div class="stats-4">
+      <div class="stat"><small>Total Profit</small><strong id="statTotalProfit" class="pos">₹0</strong></div>
+      <div class="stat"><small>Total Loss</small><strong id="statTotalLoss" class="neg">₹0</strong></div>
+      <div class="stat"><small>Break-Even Value</small><strong id="statBreakEvenVal">₹0</strong></div>
+      <div class="stat"><small>Chips Issued</small><strong id="statChipsIssued">0</strong></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">RECORDS & TRIVIA</div>
+    <h2>Fun Statistics</h2>
+    <div id="funStatsList"></div>
+  </div>
+</section>
+
+<!-- 7. HISTORY TAB -->
+<section id="history" class="tab-section">
+  <div class="card">
+    <div class="eyebrow">PAST SESSIONS</div>
+    <h2>Game History</h2>
+    <div class="sub">View summaries, copy settlement text, edit past games, or delete sessions</div>
+  </div>
+  <div id="historyList"></div>
+</section>
+
+<!-- 8. USER MANAGEMENT TAB (SUPER ADMIN ONLY) -->
+<section id="users" class="tab-section superadmin-only">
+  <div class="card">
+    <div class="eyebrow">SUPER ADMIN CONTROL</div>
+    <h2>Manage User Access</h2>
+    <div class="sub">Promote or demote users to control scoring & game management permissions</div>
+  </div>
+  <div id="usersList"></div>
+</section>
+
+</div>
+
+<!-- AUTH MODAL -->
+<div id="authModal" class="modal">
+  <div class="sheet">
+    <div class="row">
+      <h2 id="authModalTitle">Login</h2>
+      <button onclick="closeModal('authModal')">✕</button>
+    </div>
+    <div style="margin-top:10px">
+      <label class="label">Email Address</label>
+      <input type="email" id="authEmail" placeholder="admin@potluck.com">
+      <label class="label">Password</label>
+      <input type="password" id="authPassword" placeholder="••••••••">
+      <div class="actions" style="margin-top:12px">
+        <button class="primary" style="width:100%" onclick="handleLogin()">Log In</button>
+        <button style="width:100%" onclick="handleSignUp()">Sign Up New Account</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PLAYER MODAL -->
+<div id="addModal" class="modal">
+  <div class="sheet">
+    <div class="row"><h2>Add Players</h2><button onclick="closeModal('addModal')">✕</button></div>
+    
+    <label class="label">Select Pre-Defined Players (Frequency Sorted)</label>
+    <div id="presetChipsContainer" class="preset-chips"></div>
+
+    <label class="label">Or Enter Custom Names (comma separated)</label>
+    <textarea id="newName" placeholder="e.g. Arjun, Rahul"></textarea>
+    <div class="modal-subtext">Each added player starts with 1 buy-in by default.</div>
+    <div class="actions"><button class="primary" onclick="confirmAddPlayer()">Add Selected Players</button></div>
+  </div>
+</div>
+
+<!-- END GAME & SETTLEMENT MODAL -->
+<div id="settleModal" class="modal">
+  <div class="sheet">
+    <div class="row">
+      <h2>End Game & Settlement</h2>
+      <button onclick="closeModal('settleModal')">✕</button>
+    </div>
+    <div class="sub" style="margin-bottom:10px">Enter final chip stack counts. Press <b>Enter</b> to move to the next field.</div>
+    
+    <div id="settleInputs"></div>
+
+    <div id="settleAudit" class="card" style="margin-top:10px;background:#11150f">
+      <div class="row">
+        <div>
+          <div class="sub">Total Issued: <b id="totalChipsIssued">0</b></div>
+          <div class="sub">Total Counted: <b id="totalChipsCounted">0</b></div>
         </div>
-    </header>
-
-    <!-- Navigation Tabs -->
-    <nav class="max-w-md mx-auto px-4 pt-3 flex space-x-1 border-b border-slate-800 overflow-x-auto no-scrollbar">
-        <button onclick="switchTab('games')" class="tab-btn flex-1 min-w-fit px-3 py-2 rounded-t-lg text-xs font-bold uppercase tracking-wider bg-amber-500 text-slate-950" id="tab-games">Games</button>
-        <button onclick="switchTab('leaderboard')" class="tab-btn flex-1 min-w-fit px-3 py-2 rounded-t-lg text-xs font-bold uppercase tracking-wider text-slate-400 hover:bg-slate-900" id="tab-leaderboard">Stats</button>
-        <button onclick="switchTab('potSplitter')" class="tab-btn flex-1 min-w-fit px-3 py-2 rounded-t-lg text-xs font-bold uppercase tracking-wider text-slate-400 hover:bg-slate-900" id="tab-potSplitter">Pots</button>
-        <button onclick="switchTab('approvals')" class="tab-btn hidden min-w-fit px-3 py-2 rounded-t-lg text-xs font-bold uppercase tracking-wider text-amber-400 hover:bg-slate-900" id="tab-approvals">Approvals (<span id="approvalCount">0</span>)</button>
-        <button onclick="switchTab('adminManager')" class="tab-btn hidden min-w-fit px-3 py-2 rounded-t-lg text-xs font-bold uppercase tracking-wider text-amber-400 hover:bg-slate-900" id="tab-adminManager">Admins</button>
-    </nav>
-
-    <!-- Main Content Area -->
-    <main class="max-w-md mx-auto p-4 space-y-4">
-
-        <!-- GAMES TAB -->
-        <section id="view-games" class="tab-content space-y-3">
-            <div class="flex justify-between items-center">
-                <h2 class="text-xs font-black uppercase tracking-wider text-slate-400">Game History</h2>
-                <button id="createGameBtn" onclick="openCreateGameModal()" class="hidden bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider shadow">+ New Game</button>
-            </div>
-            <div id="gamesList" class="space-y-3">
-                <p class="text-slate-500 text-xs text-center py-8">Loading cloud games...</p>
-            </div>
-        </section>
-
-        <!-- LEADERBOARD TAB -->
-        <section id="view-leaderboard" class="tab-content hidden space-y-3">
-            <h2 class="text-xs font-black uppercase tracking-wider text-slate-400">Leaderboard & Analytics</h2>
-            <div id="leaderboardList" class="bg-slate-900 rounded-xl p-3 border border-slate-800 divide-y divide-slate-800/60">
-                <p class="text-slate-500 text-xs text-center py-6">Calculating stats...</p>
-            </div>
-        </section>
-
-        <!-- POT SPLITTER TAB -->
-        <section id="view-potSplitter" class="tab-content hidden space-y-3">
-            <h2 class="text-xs font-black uppercase tracking-wider text-slate-400">Side Pot Calculator</h2>
-            <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3 shadow-lg">
-                <p class="text-xs text-slate-400">Add player all-in stack amounts to automatically calculate main and side pots.</p>
-                <div id="potInputs" class="space-y-2">
-                    <div class="flex space-x-2">
-                        <input type="text" placeholder="Player Name" class="pot-player bg-slate-950 border border-slate-800 p-2 rounded-lg text-xs text-slate-100 w-1/2 focus:outline-none focus:border-amber-500">
-                        <input type="number" placeholder="Bet Amount" class="pot-stack bg-slate-950 border border-slate-800 p-2 rounded-lg text-xs text-slate-100 w-1/2 focus:outline-none focus:border-amber-500">
-                    </div>
-                </div>
-                <div class="flex space-x-2 pt-1">
-                    <button onclick="addPotPlayerInput()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-3 py-2 rounded-lg border border-slate-700 flex-1">+ Player</button>
-                    <button onclick="calculatePots()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs px-4 py-2 rounded-lg flex-1 uppercase tracking-wider">Calculate</button>
-                </div>
-                <div id="potResults" class="p-3 bg-slate-950 rounded-lg border border-slate-800 text-xs font-mono text-amber-400 hidden whitespace-pre-wrap"></div>
-            </div>
-        </section>
-
-        <!-- APPROVALS TAB (Super Admin Only) -->
-        <section id="view-approvals" class="tab-content hidden space-y-3">
-            <h2 class="text-xs font-black uppercase tracking-wider text-amber-400">Pending Deletion Requests</h2>
-            <div id="approvalsList" class="space-y-2">
-                <p class="text-slate-500 text-xs text-center py-6">No pending approvals.</p>
-            </div>
-        </section>
-
-        <!-- MANAGE ADMINS TAB (Super Admin Only) -->
-        <section id="view-adminManager" class="tab-content hidden space-y-3">
-            <h2 class="text-xs font-black uppercase tracking-wider text-amber-400">Manage Game Admins</h2>
-            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2">
-                <div class="flex space-x-2">
-                    <input type="email" id="newAdminEmail" placeholder="User email address" class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-xs text-slate-100 flex-1 focus:outline-none focus:border-amber-500">
-                    <button onclick="addAdminRole()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs px-3 py-2 rounded-lg uppercase tracking-wider">Grant Admin</button>
-                </div>
-            </div>
-            <div id="adminsList" class="bg-slate-900 rounded-xl p-3 border border-slate-800 divide-y divide-slate-800"></div>
-        </section>
-
-    </main>
-
-    <!-- AUTH MODAL -->
-    <div id="authModal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-        <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl w-full max-w-xs space-y-3 shadow-2xl">
-            <h3 class="text-sm font-black uppercase tracking-wider text-amber-400" id="authModalTitle">Account Login</h3>
-            <input type="email" id="authEmail" placeholder="Email Address" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-xs text-slate-100 focus:outline-none focus:border-amber-500">
-            <input type="password" id="authPassword" placeholder="Password" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-xs text-slate-100 focus:outline-none focus:border-amber-500">
-            <div class="flex space-x-2 pt-1">
-                <button onclick="handleAuthSubmit()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2 rounded-lg text-xs uppercase tracking-wider">Submit</button>
-                <button onclick="toggleAuthMode()" id="toggleAuthBtn" class="text-[10px] text-slate-400 underline px-2">Register</button>
-            </div>
-            <button onclick="closeAuthModal()" class="w-full text-[10px] text-slate-500 font-bold uppercase tracking-wider pt-2">Cancel</button>
-        </div>
+        <div id="chipBalanceStatus"></div>
+      </div>
     </div>
 
-    <!-- CREATE GAME MODAL -->
-    <div id="gameModal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-        <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl w-full max-w-md space-y-3 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl">
-            <h3 class="text-sm font-black uppercase tracking-wider text-amber-400">Record Game Session</h3>
-            <input type="text" id="gameTitle" placeholder="Game Name / Date" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-xs text-slate-100 focus:outline-none focus:border-amber-500">
-            <div id="gamePlayersInput" class="space-y-2">
-                <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Players (Name & Buy-in)</label>
-                <div class="flex space-x-2">
-                    <input type="text" placeholder="Name" class="g-name bg-slate-950 border border-slate-800 p-2 rounded-lg text-xs text-slate-100 w-1/2">
-                    <input type="number" placeholder="Buy-in" class="g-buyin bg-slate-950 border border-slate-800 p-2 rounded-lg text-xs text-slate-100 w-1/2">
-                </div>
-            </div>
-            <button onclick="addGamePlayerRow()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-700">+ Add Player</button>
-            <div class="flex space-x-2 pt-3">
-                <button onclick="saveGame()" class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-2 rounded-lg text-xs uppercase tracking-wider">Save Game</button>
-                <button onclick="closeGameModal()" class="bg-slate-800 text-slate-300 font-bold py-2 px-4 rounded-lg text-xs border border-slate-700">Cancel</button>
-            </div>
-        </div>
+    <div class="actions">
+      <button class="primary" style="width:100%" onclick="finalizeAndArchiveGame()">Finalize & Save to History</button>
     </div>
+  </div>
+</div>
 
-    <!-- FIREBASE INIT & LOGIC -->
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyCfxxUrfWws1872Suk9_0G5t2jehflZy7k",
-            authDomain: "potluckpoker-d7633.firebaseapp.com",
-            projectId: "potluckpoker-d7633",
-            storageBucket: "potluckpoker-d7633.firebasestorage.app",
-            messagingSenderId: "459972723823",
-            appId: "1:459972723823:web:98dfe374afaf215cf6799a",
-            measurementId: "G-C5DCD86MTF"
-        };
+<!-- HISTORY DETAIL MODAL -->
+<div id="historyModal" class="modal">
+  <div class="sheet">
+    <div class="row">
+      <h2 id="histModalTitle">Game Details</h2>
+      <button onclick="closeModal('historyModal')">✕</button>
+    </div>
+    <div class="sub" id="histModalMeta" style="margin-bottom:10px"></div>
+    <div id="histModalContent"></div>
+  </div>
+</div>
 
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+<!-- EDIT PAST GAME MODAL -->
+<div id="editModal" class="modal">
+  <div class="sheet">
+    <div class="row">
+      <h2>Edit Past Game Results</h2>
+      <button onclick="closeModal('editModal')">✕</button>
+    </div>
+    <div class="sub" style="margin-bottom:10px">Adjust final chip stack counts. Press <b>Enter</b> to move to the next field.</div>
+    
+    <div id="editInputs"></div>
 
-        let currentUser = null;
-        let userRole = 'visitor';
-        let isRegistering = false;
+    <div class="actions">
+      <button class="primary" style="width:100%" onclick="saveEditedGame()">Save Corrections</button>
+    </div>
+  </div>
+</div>
 
-        auth.onAuthStateChanged(async (user) => {
-            currentUser = user;
-            if (user) {
-                document.getElementById('userEmail').innerText = user.email;
-                document.getElementById('loginBtn').classList.add('hidden');
-                document.getElementById('userInfo').classList.remove('hidden');
+<div id="toast" class="toast"></div>
 
-                const userDoc = await db.collection('users').doc(user.uid).get();
-                if (userDoc.exists) {
-                    userRole = userDoc.data().role || 'visitor';
-                } else {
-                    const superAdmins = await db.collection('users').where('role', '==', 'superadmin').get();
-                    userRole = superAdmins.empty ? 'superadmin' : 'visitor';
-                    await db.collection('users').doc(user.uid).set({
-                        email: user.email,
-                        role: userRole
-                    });
-                }
-            } else {
-                userRole = 'visitor';
-                document.getElementById('loginBtn').classList.remove('hidden');
-                document.getElementById('userInfo').classList.add('hidden');
-            }
+<script>
+// --- FIREBASE INITIALIZATION ---
+const firebaseConfig = {
+  apiKey: "AIzaSyDummyKey_ReplaceWithYourActualKey",
+  authDomain: "potluckpoker-d7633.firebaseapp.com",
+  projectId: "potluckpoker-d7633",
+  storageBucket: "potluckpoker-d7633.appspot.com",
+  messagingSenderId: "1234567890",
+  appId: "1:1234567890:web:abcdef123456"
+};
 
-            updateRoleUI();
-            loadGames();
-            loadLeaderboard();
-            if (userRole === 'superadmin') {
-                loadApprovals();
-                loadAdminsList();
-            }
-        });
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-        function updateRoleUI() {
-            document.getElementById('roleBadge').innerText = `Role: ${userRole.toUpperCase()}`;
-            
-            if (userRole === 'superadmin') {
-                document.getElementById('tab-approvals').classList.remove('hidden');
-                document.getElementById('tab-adminManager').classList.remove('hidden');
-            } else {
-                document.getElementById('tab-approvals').classList.add('hidden');
-                document.getElementById('tab-adminManager').classList.add('hidden');
-            }
+// --- STATE MANAGEMENT ---
+let currentUser = null;
+let userRole = 'VISITOR'; // Roles: 'SUPER_ADMIN', 'ADMIN', 'VISITOR'
 
-            if (userRole === 'admin' || userRole === 'superadmin') {
-                document.getElementById('createGameBtn').classList.remove('hidden');
-            } else {
-                document.getElementById('createGameBtn').classList.add('hidden');
-            }
-        }
+let PRESET_PLAYERS = [
+  "Mohan", "Shubam", "Vishal Sinha", "Kochhar", "Kshitij", 
+  "Jisho", "Sheki", "Abhilash", "Sreenivas", "Guruji", 
+  "Chinmay", "Aishwarya", "Ankur"
+];
 
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.tab-btn').forEach(el => {
-                el.classList.remove('bg-amber-500', 'text-slate-950');
-                el.classList.add('text-slate-400');
-            });
+let activeGame = null;
+let historyGames = [];
+let editingGameId = null;
+let leaderboardData = {};
+let selectedPresetPlayers = new Set();
+let allUsersList = [];
 
-            document.getElementById(`view-${tabName}`).classList.remove('hidden');
-            const activeTabBtn = document.getElementById(`tab-${tabName}`);
-            activeTabBtn.classList.add('bg-amber-500', 'text-slate-950');
-            activeTabBtn.classList.remove('text-slate-400');
-        }
+// --- FIREBASE REALTIME LISTENERS ---
+function initRealtimeListeners() {
+  // Listen for Active Game changes
+  db.collection('poker_sessions').doc('active_session').onSnapshot(doc => {
+    if (doc.exists) {
+      activeGame = doc.data();
+      if (activeGame && activeGame.status === 'ACTIVE') {
+        document.getElementById('ledgerTabBtn').style.display = (userRole !== 'VISITOR') ? 'block' : 'none';
+      } else {
+        activeGame = null;
+        document.getElementById('ledgerTabBtn').style.display = 'none';
+      }
+    } else {
+      activeGame = null;
+      document.getElementById('ledgerTabBtn').style.display = 'none';
+    }
+    renderAll();
+  });
 
-        function openAuthModal() { document.getElementById('authModal').classList.remove('hidden'); }
-        function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); }
+  // Listen for History Games
+  db.collection('poker_history').orderBy('id', 'desc').onSnapshot(snapshot => {
+    historyGames = [];
+    snapshot.forEach(doc => {
+      historyGames.push(doc.data());
+    });
+    renderAll();
+  });
+
+  // Listen for User Roles (Super Admin View)
+  db.collection('users').onSnapshot(snapshot => {
+    allUsersList = [];
+    snapshot.forEach(doc => {
+      allUsersList.push({ uid: doc.id, ...doc.data() });
+    });
+    if (userRole === 'SUPER_ADMIN') renderUsersList();
+  });
+}
+
+// --- AUTHENTICATION & ROLE MANAGEMENT ---
+auth.onAuthStateChanged(async (user) => {
+  currentUser = user;
+  if (user) {
+    document.getElementById('userEmailText').textContent = user.email;
+    document.getElementById('authBtn').textContent = 'Logout';
+    
+    // Fetch or create user role document
+    const userRef = db.collection('users').doc(user.uid);
+    const doc = await userRef.get();
+    
+    if (doc.exists) {
+      userRole = doc.data().role || 'VISITOR';
+    } else {
+      // First user becomes Super Admin automatically, others become Visitors
+      const snapshot = await db.collection('users').get();
+      userRole = snapshot.empty ? 'SUPER_ADMIN' : 'VISITOR';
+      await userRef.set({ email: user.email, role: userRole });
+    }
+  } else {
+    currentUser = null;
+    userRole = 'VISITOR';
+    document.getElementById('userEmailText').textContent = 'Visitor Mode';
+    document.getElementById('authBtn').textContent = 'Login';
+  }
+
+  updateRoleUI();
+  initRealtimeListeners();
+});
+
+function updateRoleUI() {
+  const badge = document.getElementById('userRoleBadge');
+  badge.textContent = userRole.replace('_', ' ');
+  badge.className = 'role-pill ' + (
+    userRole === 'SUPER_ADMIN' ? 'role-superadmin' :
+    userRole === 'ADMIN' ? 'role-admin' : 'role-visitor'
+  );
+
+  // Show/Hide Admin Action UI
+  const isAdmin = (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN');
+  const isSuperAdmin = (userRole === 'SUPER_ADMIN');
+
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = isAdmin ? '' : 'none';
+  });
+
+  document.querySelectorAll('.superadmin-only').forEach(el => {
+    el.style.display = isSuperAdmin ? '' : 'none';
+  });
+
+  if (!isAdmin && document.getElementById('create').classList.contains('active')) {
+    switchTab('quick', document.querySelectorAll('.tab-btn')[1]);
+  }
+}
+
+function toggleAuthModal() {
+  if (currentUser) {
+    auth.signOut();
+    toast('Logged out successfully');
+  } else {
+    document.getElementById('authModal').classList.add('show');
+  }
+}
+
+async function handleLogin() {
+  const email = document.getElementById('authEmail').value.trim();
+  const pass = document.getElementById('authPassword').value;
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+    closeModal('authModal');
+    toast('Logged in successfully ✓');
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+async function handleSignUp() {
+  const email = document.getElementById('authEmail').value.trim();
+  const pass = document.getElementById('authPassword').value;
+  try {
+    await auth.createUserWithEmailAndPassword(email, pass);
+    closeModal('authModal');
+    toast('Account created successfully ✓');
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+async function updateUserRole(uid, newRole) {
+  if (userRole !== 'SUPER_ADMIN') return toast('Permission denied');
+  try {
+    await db.collection('users').doc(uid).update({ role: newRole });
+    toast('User role updated');
+  } catch (err) {
+    toast('Error updating role: ' + err.message);
+  }
+}
+
+function renderUsersList() {
+  const container = document.getElementById('usersList');
+  if (allUsersList.length === 0) {
+    container.innerHTML = `<div class="card"><div class="muted">No registered users found.</div></div>`;
+    return;
+  }
+
+  container.innerHTML = allUsersList.map(u => `
+    <div class="card">
+      <div class="row">
+        <div>
+          <b>${u.email}</b>
+          <div class="sub">UID: ${u.uid}</div>
+        </div>
+        <div>
+          <select style="width:auto;min-height:30px;font-size:11px" onchange="updateUserRole('${u.uid}', this.value)" ${u.uid === currentUser.uid ? 'disabled' : ''}>
+            <option value="VISITOR" ${u.role === 'VISITOR' ? 'selected' : ''}>VISITOR</option>
+            <option value="ADMIN" ${u.role === 'ADMIN' ? 'selected' : ''}>ADMIN</option>
+            <option value="SUPER_ADMIN" ${u.role === 'SUPER_ADMIN' ? 'selected' : ''}>SUPER ADMIN</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// --- SYNC HELPERS ---
+async function syncActiveGame() {
+  if (userRole === 'VISITOR') return;
+  if (activeGame) {
+    await db.collection('poker_sessions').doc('active_session').set(activeGame);
+  } else {
+    await db.collection('poker_sessions').doc('active_session').delete();
+  }
+}
+
+async function syncHistoryGame(gameObj) {
+  if (userRole === 'VISITOR') return;
+  await db.collection('poker_history').doc(String(gameObj.id)).set(gameObj);
+}
+
+// --- APP CORE FUNCTIONS ---
+function setTodayDate() {
+  let today = new Date();
+  let yyyy = today.getFullYear();
+  let mm = String(today.getMonth() + 1).padStart(2, '0');
+  let dd = String(today.getDate()).padStart(2, '0');
+  document.getElementById('gameDate').value = `${yyyy}-${mm}-${dd}`;
+}
+setTodayDate();
+
+function formatDateDDMMYYYY(dateStr) {
+  if(!dateStr) return '';
+  let p = dateStr.split('-');
+  if(p.length === 3) return `${p[2]}/${p[1]}/${p[0]}`;
+  return dateStr;
+}
+
+function toast(m) {
+  let t = document.getElementById('toast');
+  t.textContent = m;
+  t.classList.add('show');
+  clearTimeout(t.x);
+  t.x = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+function getTimeStr() {
+  return new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+function logEvent(gameObj, actionType, details) {
+  let entry = { id: Date.now(), time: getTimeStr(), action: actionType, details: details };
+  if(gameObj && gameObj.logs) gameObj.logs.push(entry);
+}
+
+function switchTab(tabId, btn) {
+  document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('primary'));
+  
+  document.getElementById(tabId).classList.add('active');
+  btn.classList.add('primary');
+
+  btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  renderAll();
+}
+
+async function startNewGame() {
+  if (userRole === 'VISITOR') return toast('Admin privileges required');
+  let title = document.getElementById('gameTitle').value.trim() || 'Mohans Poker Club';
+  let rawDate = document.getElementById('gameDate').value || new Date().toISOString().split('T')[0];
+  let formattedDate = formatDateDDMMYYYY(rawDate);
+  
+  let cash = Math.max(1, +document.getElementById('cash').value || 1000);
+  let chips = Math.max(1, +document.getElementById('chips').value || 4000);
+  let small = +document.getElementById('small').value || 50;
+  let big = +document.getElementById('big').value || 100;
+
+  activeGame = {
+    id: Date.now(),
+    title, date: formattedDate, rawDate, cash, chips, small, big,
+    players: [],
+    logs: [],
+    status: 'ACTIVE'
+  };
+
+  logEvent(activeGame, 'Game Session Created', `Title: "${title}", Date: ${formattedDate}, Buy-in: ₹${cash}`);
+  await syncActiveGame();
+  
+  toast('Game "' + title + '" started!');
+  
+  document.getElementById('calcRateCash').value = cash;
+  document.getElementById('calcRateChips').value = chips;
+
+  document.getElementById('ledgerTabBtn').style.display = 'block';
+  switchTab('quick', document.querySelectorAll('.tab-btn')[1]);
+}
+
+function calculateNetPL(p) {
+  if(!activeGame) return 0;
+  let chipValue = (p.chips / activeGame.chips) * activeGame.cash;
+  return chipValue - p.cash;
+}
+
+function renderQuickView() {
+  if(!activeGame) {
+    document.getElementById('quickGameTitle').textContent = 'No Active Game';
+    document.getElementById('quickGameMeta').textContent = 'Create a game session to start adding players';
+    document.getElementById('endSettleBtn').disabled = true;
+    document.getElementById('addPlayerBtn').disabled = true;
+    document.getElementById('quickPlayerList').innerHTML = `<div class="card"><div class="muted">No active game session. Go to "Create Game" tab to start one.</div></div>`;
+    return;
+  }
+
+  document.getElementById('quickGameTitle').textContent = activeGame.title;
+  document.getElementById('quickGameMeta').textContent = `${activeGame.date} · Blinds ₹${activeGame.small}/₹${activeGame.big} · ₹${activeGame.cash} = ${activeGame.chips} chips`;
+  document.getElementById('endSettleBtn').disabled = false;
+  document.getElementById('addPlayerBtn').disabled = false;
+
+  let container = document.getElementById('quickPlayerList');
+  if(activeGame.players.length === 0) {
+    container.innerHTML = `<div class="card"><div class="muted">No players added yet. Click "+ Add Players" to bring players to the table.</div></div>`;
+    return;
+  }
+
+  const isAdmin = (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN');
+
+  container.innerHTML = activeGame.players.map(p => {
+    let pl = calculateNetPL(p);
+    let plFormatted = (pl >= 0 ? '+' : '-') + '₹' + Math.abs(Math.round(pl)).toLocaleString('en-IN');
+    let plClass = pl >= 0 ? 'pos' : 'neg';
+
+    if(!p.active) {
+      return `
+        <div class="card removed-row">
+          <div class="row">
+            <div class="who">
+              <div class="avatar">${p.name.slice(0,2).toUpperCase()}</div>
+              <div>
+                <b>${p.name}</b> <span class="tag">REMOVED</span>
+                <div class="sub">Buy-ins: ${p.buyins} · ${p.chips.toLocaleString('en-IN')} chips</div>
+              </div>
+            </div>
+            ${isAdmin ? `<button class="primary restore-btn" onclick="togglePlayer(${p.id})">Restore Player</button>` : ''}
+          </div>
+        </div>`;
+    }
+
+    let isSittingOut = !!p.sittingOut;
+
+    return `
+      <div class="card ${isSittingOut ? 'sitting-out' : ''}">
+        <div class="row">
+          <div class="who">
+            <div class="avatar">${p.name.slice(0,2).toUpperCase()}</div>
+            <div>
+              <b>${p.name}</b> ${isSittingOut ? '<span class="tag tag-out">SITTING OUT</span>' : ''}
+              <div class="sub">Buy-ins: <span class="count">${p.buyins}</span> · ${p.chips.toLocaleString('en-IN')} chips</div>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div class="sub">Live P / L</div>
+            <b class="${plClass}">${plFormatted}</b>
+          </div>
+        </div>
+        ${isAdmin ? `
+        <div class="actions">
+          <button class="primary" onclick="rebuy(${p.id})">+ Rebuy</button>
+          <button onclick="undoBuyIn(${p.id})" ${p.buyins <= 1 ? 'disabled' : ''}>Undo</button>
+          <button class="${isSittingOut ? 'warning' : ''}" onclick="toggleSitOut(${p.id})">${isSittingOut ? '▶ Resume' : '⏸ Sit Out'}</button>
+          <button class="danger" onclick="togglePlayer(${p.id})">Remove</button>
+        </div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+async function rebuy(id) {
+  if (userRole === 'VISITOR') return;
+  let p = activeGame.players.find(x => x.id === id);
+  if(!p || !p.active) return;
+  p.cash += activeGame.cash;
+  p.chips += activeGame.chips;
+  p.buyins++;
+  logEvent(activeGame, 'Rebuy', `${p.name} added 1 Rebuy (+₹${activeGame.cash}, +${activeGame.chips} chips)`);
+  await syncActiveGame();
+  toast(p.name + ' rebuy added ✓');
+}
+
+async function undoBuyIn(id) {
+  if (userRole === 'VISITOR') return;
+  let p = activeGame.players.find(x => x.id === id);
+  if(!p || !p.active || p.buyins <= 1) return;
+  p.cash -= activeGame.cash;
+  p.chips -= activeGame.chips;
+  p.buyins--;
+  logEvent(activeGame, 'Undo Buy-in', `Undone 1 Buy-in for ${p.name} (-₹${activeGame.cash}, -${activeGame.chips} chips)`);
+  await syncActiveGame();
+  toast('Buy-in undone for ' + p.name);
+}
+
+async function toggleSitOut(id) {
+  if (userRole === 'VISITOR') return;
+  let p = activeGame.players.find(x => x.id === id);
+  if(!p || !p.active) return;
+  p.sittingOut = !p.sittingOut;
+  logEvent(activeGame, p.sittingOut ? 'Player Sit Out' : 'Player Resumed', `${p.name} is now ${p.sittingOut ? 'sitting out' : 'active'}`);
+  await syncActiveGame();
+  toast(p.name + (p.sittingOut ? ' is sitting out' : ' resumed play'));
+}
+
+async function togglePlayer(id) {
+  if (userRole === 'VISITOR') return;
+  let p = activeGame.players.find(x => x.id === id);
+  if(!p) return;
+  p.active = !p.active;
+  logEvent(activeGame, p.active ? 'Player Restored' : 'Player Removed', `${p.name} was ${p.active ? 'restored to' : 'removed from'} active game`);
+  await syncActiveGame();
+  toast(p.name + (p.active ? ' restored' : ' removed'));
+}
+
+function openAddModal() {
+  if (userRole === 'VISITOR') return;
+  if(!activeGame) return toast('Create a game first!');
+  selectedPresetPlayers.clear();
+  renderPresetChips();
+  document.getElementById('newName').value = '';
+  document.getElementById('addModal').classList.add('show');
+}
+
+function renderPresetChips() {
+  let freqMap = {};
+  PRESET_PLAYERS.forEach(name => freqMap[name] = 0);
+
+  historyGames.forEach(g => {
+    g.players.forEach(p => {
+      if(p.active && freqMap[p.name] !== undefined) {
+        freqMap[p.name]++;
+      }
+    });
+  });
+
+  let activeNames = new Set(activeGame ? activeGame.players.filter(p => p.active).map(p => p.name) : []);
+  let sortedPresets = [...PRESET_PLAYERS].sort((a,b) => freqMap[b] - freqMap[a]);
+
+  let html = sortedPresets.map(name => {
+    let isAlreadyIn = activeNames.has(name);
+    let isSelected = selectedPresetPlayers.has(name);
+    let count = freqMap[name] || 0;
+
+    if(isAlreadyIn) {
+      return `<button class="chip-btn" disabled style="opacity:0.4">${name} <span class="freq-tag">In Game</span></button>`;
+    }
+
+    return `
+      <button class="chip-btn ${isSelected ? 'selected' : ''}" onclick="togglePresetChip('${name}')">
+        ${isSelected ? '✓ ' : '+ '}${name}
+        ${count > 0 ? `<span class="freq-tag">${count}d</span>` : ''}
+      </button>
+    `;
+  }).join('');
+
+  document.getElementById('presetChipsContainer').innerHTML = html;
+}
+
+function togglePresetChip(name) {
+  if(selectedPresetPlayers.has(name)) {
+    selectedPresetPlayers.delete(name);
+  } else {
+    selectedPresetPlayers.add(name);
+  }
+  renderPresetChips();
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+async function confirmAddPlayer() {
+  if (userRole === 'VISITOR') return;
+  let rawNames = document.getElementById('newName').value;
+  let customNames = rawNames.split(',').map(s => s.trim()).filter(s => s.length > 0);
+  
+  customNames.forEach(name => {
+    let exists = PRESET_PLAYERS.some(p => p.toLowerCase() === name.toLowerCase());
+    if(!exists) PRESET_PLAYERS.push(name);
+  });
+
+  let allToAdd = Array.from(selectedPresetPlayers).concat(customNames);
+  if(allToAdd.length === 0) return toast('Select or enter at least one player');
+
+  allToAdd.forEach(name => {
+    let p = {id: Date.now() + Math.random(), name, chips: activeGame.chips, buyins: 1, cash: activeGame.cash, active: true, sittingOut: false};
+    activeGame.players.push(p);
+    logEvent(activeGame, 'Player Joined', `${name} joined with 1 starting buy-in (₹${activeGame.cash})`);
+  });
+
+  await syncActiveGame();
+  closeModal('addModal');
+  toast(`${allToAdd.length} player(s) added!`);
+}
+
+/* ENTER KEY FOCUS NAVIGATION FOR SETTLEMENTS */
+function handleSettlementKeydown(event, currentIndex, containerClass) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    let inputs = Array.from(document.querySelectorAll('.' + containerClass));
+    if (currentIndex < inputs.length - 1) {
+      inputs[currentIndex + 1].focus();
+      inputs[currentIndex + 1].select();
+    } else {
+      inputs[currentIndex].blur();
+      if(containerClass === 'settle-input') {
+        finalizeAndArchiveGame();
+      } else if(containerClass === 'edit-input') {
+        saveEditedGame();
+      }
+    }
+  }
+}
+
+/* SETTLEMENT WITH QUICK CHIP BUTTONS & ENTER KEY NAV */
+function openSettleModal() {
+  if (userRole === 'VISITOR') return;
+  if(!activeGame || activeGame.players.length === 0) return toast('No players to settle!');
+  let activeList = activeGame.players.filter(p => p.active);
+  
+  let inputsHtml = activeList.map((p, idx) => `
+    <div class="settle-card-wrap">
+      <div class="settle-row">
+        <div><b>${p.name}</b> <span class="sub">(Paid ₹${p.cash})</span></div>
+        <input type="number" class="settle-input" id="settleInp_${p.id}" data-id="${p.id}" value="" placeholder="0" oninput="updateSettleAudit()" onkeydown="handleSettlementKeydown(event, ${idx}, 'settle-input')">
+      </div>
+      <div class="quick-chip-btns">
+        <button onclick="addChipsToInput('settleInp_${p.id}', 100)">+100</button>
+        <button onclick="addChipsToInput('settleInp_${p.id}', 500)">+500</button>
+        <button onclick="addChipsToInput('settleInp_${p.id}', 1000)">+1k</button>
+        <button onclick="addChipsToInput('settleInp_${p.id}', 5000)">+5k</button>
+      </div>
+    </div>
+  `).join('');
+  
+  document.getElementById('settleInputs').innerHTML = inputsHtml;
+  document.getElementById('settleModal').classList.add('show');
+  
+  setTimeout(() => {
+    let firstInp = document.querySelector('.settle-input');
+    if(firstInp) firstInp.focus();
+  }, 100);
+
+  updateSettleAudit();
+}
+
+function addChipsToInput(inputId, amount) {
+  let inp = document.getElementById(inputId);
+  if(!inp) return;
+  let val = Math.max(0, +inp.value || 0);
+  inp.value = val + amount;
+  updateSettleAudit();
+}
+
+function updateSettleAudit() {
+  let totalIssued = activeGame.players.filter(p => p.active).reduce((s, p) => s + p.chips, 0);
+  let totalCounted = 0;
+  
+  document.querySelectorAll('.settle-input').forEach(inp => {
+    totalCounted += Math.max(0, +inp.value || 0);
+  });
+
+  document.getElementById('totalChipsIssued').textContent = totalIssued.toLocaleString('en-IN');
+  document.getElementById('totalChipsCounted').textContent = totalCounted.toLocaleString('en-IN');
+
+  let diff = totalCounted - totalIssued;
+  let statusBox = document.getElementById('chipBalanceStatus');
+
+  if(diff === 0) {
+    statusBox.innerHTML = `<span class="tag pos">✓ Perfect Match</span>`;
+  } else if(diff > 0) {
+    statusBox.innerHTML = `<span class="tag neg">+${diff} Over Chips</span>`;
+  } else {
+    statusBox.innerHTML = `<span class="tag neg">${diff} Missing Chips</span>`;
+  }
+}
+
+function calculateMinimalSettlements(balances) {
+  let debtors = balances.filter(b => b.net < 0).map(b => ({ ...b, net: -b.net })).sort((a,b) => b.net - a.net);
+  let creditors = balances.filter(b => b.net > 0).sort((a,b) => b.net - a.net);
+  let settlements = [];
+  let dIdx = 0, cIdx = 0;
+
+  while(dIdx < debtors.length && cIdx < creditors.length) {
+    let d = debtors[dIdx], c = creditors[cIdx];
+    let amount = Math.min(d.net, c.net);
+    if(amount > 0) {
+      settlements.push({ from: d.name, to: c.name, amount });
+      d.net -= amount;
+      c.net -= amount;
+    }
+    if(d.net === 0) dIdx++;
+    if(c.net === 0) cIdx++;
+  }
+  return settlements;
+}
+
+async function finalizeAndArchiveGame() {
+  if (userRole === 'VISITOR') return;
+  let activeList = activeGame.players.filter(p => p.active);
+  let balances = [];
+
+  document.querySelectorAll('.settle-input').forEach(inp => {
+    let pid = +inp.dataset.id;
+    let finalChips = Math.max(0, +inp.value || 0);
+    let player = activeList.find(x => String(x.id) === String(pid));
+    if(player) {
+      player.finalChips = finalChips;
+      let finalCash = (finalChips / activeGame.chips) * activeGame.cash;
+      let netPL = Math.round(finalCash - player.cash);
+      player.finalPL = netPL;
+      balances.push({ id: player.id, name: player.name, net: netPL });
+    }
+  });
+
+  activeGame.settlements = calculateMinimalSettlements(balances);
+  activeGame.status = 'COMPLETED';
+  logEvent(activeGame, 'Game Ended', 'Final chip stack counts submitted & settlements calculated');
+  
+  await syncHistoryGame(activeGame);
+  activeGame = null;
+  await syncActiveGame();
+  
+  toast('Game ended & saved to History!');
+  
+  document.getElementById('ledgerTabBtn').style.display = 'none';
+  closeModal('settleModal');
+  switchTab('history', document.getElementById('historyTabBtn'));
+}
+
+function openEditModal(gid) {
+  if (userRole === 'VISITOR') return;
+  editingGameId = gid;
+  let g = historyGames.find(x => x.id === gid);
+  if(!g) return;
+
+  let inputsHtml = g.players.filter(p => p.active).map((p, idx) => `
+    <div class="settle-card-wrap">
+      <div class="settle-row">
+        <div><b>${p.name}</b> <span class="sub">(Paid ₹${p.cash})</span></div>
+        <input type="number" class="edit-input" id="editInp_${p.id}" data-id="${p.id}" value="${p.finalChips || 0}" onkeydown="handleSettlementKeydown(event, ${idx}, 'edit-input')">
+      </div>
+      <div class="quick-chip-btns">
+        <button onclick="addChipsToInput('editInp_${p.id}', 100)">+100</button>
+        <button onclick="addChipsToInput('editInp_${p.id}', 500)">+500</button>
+        <button onclick="addChipsToInput('editInp_${p.id}', 1000)">+1k</button>
+        <button onclick="addChipsToInput('editInp_${p.id}', 5000)">+5k</button>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('editInputs').innerHTML = inputsHtml;
+  closeModal('historyModal');
+  document.getElementById('editModal').classList.add('show');
+
+  setTimeout(() => {
+    let firstInp = document.querySelector('.edit-input');
+    if(firstInp) firstInp.focus();
+  }, 100);
+}
+
+async function saveEditedGame() {
+  if (userRole === 'VISITOR') return;
+  let g = historyGames.find(x => x.id === editingGameId);
+  if(!g) return;
+
+  let balances = [];
+  document.querySelectorAll('.edit-input').forEach(inp => {
+    let pid = inp.dataset.id;
+    let finalChips = Math.max(0, +inp.value || 0);
+    let player = g.players.find(x => String(x.id) === String(pid));
+    if(player) {
+      player.finalChips = finalChips;
+      let finalCash = (finalChips / g.chips) * g.cash;
+      let netPL = Math.round(finalCash - player.cash);
+      player.finalPL = netPL;
+      balances.push({ id: player.id, name: player.name, net: netPL });
+    }
+  });
+
+  g.settlements = calculateMinimalSettlements(balances);
+  logEvent(g, 'Game Edited', 'Admin updated final chip stack counts post-game');
+
+  await syncHistoryGame(g);
+  closeModal('editModal');
+  toast('Game corrections saved ✓');
+  openHistoryDetail(g.id);
+}
+
+/* DELETE PAST GAME (ADMIN RIGHT) */
+async function deleteHistoryGame(gid) {
+  if (userRole === 'VISITOR') return;
+  let g = historyGames.find(x => x.id === gid);
+  if(!g) return;
+  
+  if(confirm(`Are you sure you want to delete "${g.title}" (${g.date})? This action cannot be undone.`)) {
+    await db.collection('poker_history').doc(String(gid)).delete();
+    closeModal('historyModal');
+    toast('Game deleted successfully 🗑️');
+  }
+}
+
+/* COPY SETTLEMENT SUMMARY TO CLIPBOARD */
+function generateShareText(g) {
+  let text = `🃏 *POTLUCK POKER SUMMARY*\n`;
+  text += `📌 *${g.title}*\n`;
+  text += `📅 ${g.date} | Blinds ₹${g.small}/₹${g.big}\n\n`;
+
+  text += `*Settlements / Transfers:*\n`;
+  if(g.settlements && g.settlements.length > 0) {
+    g.settlements.forEach(s => {
+      text += `• *${s.from}* pays *${s.to}* → ₹${s.amount.toLocaleString('en-IN')}\n`;
+    });
+  } else {
+    text += `• No payment transfers required.\n`;
+  }
+
+  text += `\n*Individual Results:*\n`;
+  g.players.filter(p => p.active).forEach(p => {
+    let pl = p.finalPL || 0;
+    let sign = pl >= 0 ? '+' : '-';
+    text += `• ${p.name}: ${sign}₹${Math.abs(pl).toLocaleString('en-IN')}\n`;
+  });
+
+  text += `\n_Recorded on Potluck Poker_ 🚀`;
+  return text;
+}
+
+function copyGameSummaryText(gid) {
+  let g = historyGames.find(x => x.id === gid);
+  if(!g) return;
+  let text = generateShareText(g);
+  navigator.clipboard.writeText(text).then(() => {
+    toast('Summary copied to clipboard! 📋');
+  }).catch(() => {
+    toast('Failed to copy summary');
+  });
+}
+
+/* SIDE POT CALCULATOR & CONVERTER LOGIC */
+function addSidePotInput() {
+  let container = document.getElementById('sidePotInputs');
+  let count = container.querySelectorAll('input').length + 1;
+  let div = document.createElement('div');
+  div.className = 'two';
+  div.style.marginBottom = '6px';
+  div.innerHTML = `<input type="number" class="sp-input" placeholder="Player ${count} Bet (Chips)"><input type="number" class="sp-input" placeholder="Player ${count+1} Bet (Chips)">`;
+  container.appendChild(div);
+}
+
+function calculateSidePots() {
+  let inputs = document.querySelectorAll('.sp-input');
+  let bets = [];
+  inputs.forEach((inp, i) => {
+    let val = +inp.value || 0;
+    if(val > 0) bets.push({ id: i + 1, bet: val });
+  });
+
+  if(bets.length < 2) {
+    document.getElementById('sidePotResult').innerHTML = `<div class="sub" style="color:var(--orange)">Enter at least 2 player bet amounts.</div>`;
+    return;
+  }
+
+  bets.sort((a,b) => a.bet - b.bet);
+  let pots = [];
+  let previousLevel = 0;
+
+  bets.forEach((b, idx) => {
+    let levelDiff = b.bet - previousLevel;
+    if(levelDiff > 0) {
+      let contributorsCount = bets.length - idx;
+      let potAmount = levelDiff * contributorsCount;
+      let eligible = bets.slice(idx).map(x => `Player ${x.id}`);
+      pots.push({ name: idx === 0 ? 'Main Pot' : `Side Pot ${idx}`, amount: potAmount, eligible });
+      previousLevel = b.bet;
+    }
+  });
+
+  let html = pots.map(p => `
+    <div class="card" style="background:#11150f;margin-bottom:6px">
+      <div class="row">
+        <b>${p.name}</b>
+        <b class="count">${p.amount.toLocaleString('en-IN')} chips</b>
+      </div>
+      <div class="sub">Eligible: ${p.eligible.join(', ')}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('sidePotResult').innerHTML = html;
+}
+
+function runChipConvert(source) {
+  let rateCash = +document.getElementById('calcRateCash').value || 1000;
+  let rateChips = +document.getElementById('calcRateChips').value || 4000;
+  if(rateCash <= 0 || rateChips <= 0) return;
+
+  let ratio = rateCash / rateChips;
+
+  if(source === 'chips') {
+    let chips = +document.getElementById('calcChipsInput').value || 0;
+    document.getElementById('calcCashInput').value = Math.round(chips * ratio);
+  } else if(source === 'cash') {
+    let cash = +document.getElementById('calcCashInput').value || 0;
+    document.getElementById('calcChipsInput').value = Math.round(cash / ratio);
+  } else {
+    let chips = +document.getElementById('calcChipsInput').value || 0;
+    document.getElementById('calcCashInput').value = Math.round(chips * ratio);
+  }
+}
+
+/* LEADERBOARD WITH RANK BADGES */
+function renderLeaderboard() {
+  leaderboardData = {};
+
+  historyGames.forEach(g => {
+    g.players.forEach(p => {
+      if(!p.active) return;
+      if(!leaderboardData[p.name]) {
+        leaderboardData[p.name] = { name: p.name, days: 0, profitDays: 0, lossDays: 0, breakEvenDays: 0, totalPL: 0 };
+      }
+      leaderboardData[p.name].days++;
+      let pl = p.finalPL || 0;
+      leaderboardData[p.name].totalPL += pl;
+      
+      if(pl > 0) leaderboardData[p.name].profitDays++;
+      else if(pl < 0) leaderboardData[p.name].lossDays++;
+      else leaderboardData[p.name].breakEvenDays++;
+    });
+  });
+
+  let sorted = Object.values(leaderboardData).sort((a,b) => b.totalPL - a.totalPL);
+  let container = document.getElementById('leaderboardList');
+
+  if(sorted.length === 0) {
+    container.innerHTML = `<div class="card"><div class="muted">No completed games yet. Complete a game session to view leaderboard rankings.</div></div>`;
+    return;
+  }
+
+  container.innerHTML = sorted.map((s, idx) => {
+    let plFormatted = (s.totalPL >= 0 ? '+' : '-') + '₹' + Math.abs(s.totalPL).toLocaleString('en-IN');
+    let plClass = s.totalPL >= 0 ? 'pos' : 'neg';
+
+    let rankBadgeClass = idx === 0 ? 'rank-1' : (idx === 1 ? 'rank-2' : (idx === 2 ? 'rank-3' : ''));
+    let rankLabel = idx === 0 ? '🥇 1st' : (idx === 1 ? '🥈 2nd' : (idx === 2 ? '🥉 3rd' : `#${idx + 1}`));
+
+    return `
+      <div class="card" style="padding:10px 12px">
+        <div class="lb-single-row">
+          <div style="display:flex;align-items:center;gap:8px;min-width:100px;max-width:170px">
+            <div class="lb-rank ${rankBadgeClass}">${rankLabel}</div>
+            <b style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</b>
+          </div>
+
+          <div class="lb-metrics-inline">
+            <span>📅 ${s.days}</span>
+            <span>📈 <b class="pos">${s.profitDays}</b></span>
+            <span>📉 <b class="neg">${s.lossDays}</b></span>
+            <span>🤝 <b>${s.breakEvenDays}</b></span>
+          </div>
+
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Lifetime P/L</div>
+            <b class="${plClass}" style="font-size:13px">${plFormatted}</b>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderOverallStats() {
+  let pokerDays = historyGames.length;
+  let uniquePlayers = new Set();
+  let totalBuyins = 0;
+  let totalBuyinVal = 0;
+  let totalProfit = 0;
+  let totalLoss = 0;
+  let breakEvenVal = 0;
+  let totalChipsIssued = 0;
+
+  let maxWin = { amount: 0, player: '-', game: '-' };
+  let maxLoss = { amount: 0, player: '-', game: '-' };
+  let biggestPot = { amount: 0, game: '-' };
+  let playerDaysMap = {};
+
+  historyGames.forEach(g => {
+    let gamePot = 0;
+    g.players.forEach(p => {
+      if(!p.active) return;
+      uniquePlayers.add(p.name);
+      totalBuyins += p.buyins;
+      let cashSpent = p.cash;
+      totalBuyinVal += cashSpent;
+      gamePot += cashSpent;
+      totalChipsIssued += (p.buyins * g.chips);
+
+      playerDaysMap[p.name] = (playerDaysMap[p.name] || 0) + 1;
+
+      let pl = p.finalPL || 0;
+      if(pl > 0) {
+        totalProfit += pl;
+        if(pl > maxWin.amount) maxWin = { amount: pl, player: p.name, game: g.title };
+      } else if(pl < 0) {
+        let absLoss = Math.abs(pl);
+        totalLoss += absLoss;
+        if(absLoss > maxLoss.amount) maxLoss = { amount: absLoss, player: p.name, game: g.title };
+      } else {
+        breakEvenVal += cashSpent;
+      }
+    });
+
+    if(gamePot > biggestPot.amount) {
+      biggestPot = { amount: gamePot, game: g.title };
+    }
+  });
+
+  document.getElementById('statPokerDays').textContent = pokerDays;
+  document.getElementById('statUniquePlayers').textContent = uniquePlayers.size;
+  document.getElementById('statTotalBuyins').textContent = totalBuyins;
+  document.getElementById('statValueBuyins').textContent = '₹' + totalBuyinVal.toLocaleString('en-IN');
+  document.getElementById('statTotalProfit').textContent = '₹' + totalProfit.toLocaleString('en-IN');
+  document.getElementById('statTotalLoss').textContent = '₹' + totalLoss.toLocaleString('en-IN');
+  document.getElementById('statBreakEvenVal').textContent = '₹' + breakEvenVal.toLocaleString('en-IN');
+  document.getElementById('statChipsIssued').textContent = totalChipsIssued.toLocaleString('en-IN');
+
+  let mostActive = Object.entries(playerDaysMap).sort((a,b) => b[1] - a[1])[0] || ['-', 0];
+  let avgBuyinsPerPlayer = (totalBuyins / (pokerDays || 1)).toFixed(1);
+
+  document.getElementById('funStatsList').innerHTML = `
+    <div class="stat-row"><div>Biggest Single-Game Win</div><b class="pos">+₹${maxWin.amount.toLocaleString('en-IN')} (${maxWin.player})</b></div>
+    <div class="stat-row"><div>Biggest Single-Game Loss</div><b class="neg">-₹${maxLoss.amount.toLocaleString('en-IN')} (${maxLoss.player})</b></div>
+    <div class="stat-row"><div>Largest Game Cash Pot</div><b>₹${biggestPot.amount.toLocaleString('en-IN')} (${biggestPot.game})</b></div>
+    <div class="stat-row"><div>Most Loyal Player</div><b>${mostActive[0]} (${mostActive[1]} days)</b></div>
+    <div class="stat-row"><div>Avg Buy-ins per Session</div><b>${avgBuyinsPerPlayer} buy-ins</b></div>
+  `;
+}
+
+function renderHistory() {
+  let container = document.getElementById('historyList');
+
+  if(historyGames.length === 0) {
+    container.innerHTML = `<div class="card"><div class="muted">No completed games in history yet.</div></div>`;
+    return;
+  }
+
+  const isAdmin = (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN');
+
+  container.innerHTML = historyGames.map(g => {
+    let cashTotal = g.players.reduce((s,p) => s + p.cash, 0);
+    let chipTotal = g.players.reduce((s,p) => s + (p.buyins * g.chips), 0);
+    let activeCount = g.players.filter(p => p.active).length;
+
+    return `
+      <div class="card history-item">
+        <div class="row">
+          <div>
+            <b style="font-size:14px">${g.title}</b>
+            <div class="sub">${g.date} · ${activeCount} Players</div>
+          </div>
+          <div style="display:flex;gap:4px">
+            <button class="primary btn-sm" onclick="openHistoryDetail(${g.id})">Summary</button>
+            <button class="btn-copy" onclick="copyGameSummaryText(${g.id})" title="Copy Settlement Summary">📋 Copy</button>
+            ${isAdmin ? `
+              <button class="btn-edit" onclick="openEditModal(${g.id})" title="Edit Results">✏️ Edit</button>
+              <button class="btn-delete" onclick="deleteHistoryGame(${g.id})" title="Delete Game">🗑️ Delete</button>
+            ` : ''}
+          </div>
+        </div>
         
-        function toggleAuthMode() {
-            isRegistering = !isRegistering;
-            document.getElementById('authModalTitle').innerText = isRegistering ? 'Account Registration' : 'Account Login';
-            document.getElementById('toggleAuthBtn').innerText = isRegistering ? 'Switch to Login' : 'Register';
-        }
+        <div class="stats" style="margin-top:8px">
+          <div class="stat"><small>Cash In</small><strong>₹${cashTotal.toLocaleString('en-IN')}</strong></div>
+          <div class="stat"><small>Chips Issued</small><strong>${chipTotal.toLocaleString('en-IN')}</strong></div>
+          <div class="stat"><small>Players</small><strong>${activeCount}</strong></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
 
-        async function handleAuthSubmit() {
-            const email = document.getElementById('authEmail').value;
-            const password = document.getElementById('authPassword').value;
-            try {
-                if (isRegistering) {
-                    await auth.createUserWithEmailAndPassword(email, password);
-                } else {
-                    await auth.signInWithEmailAndPassword(email, password);
-                }
-                closeAuthModal();
-            } catch (err) {
-                alert(err.message);
-            }
-        }
+function toggleLogVisibility() {
+  let logSec = document.getElementById('histLogContainer');
+  let btn = document.getElementById('histLogToggleBtn');
+  if(logSec.style.display === 'none') {
+    logSec.style.display = 'block';
+    btn.textContent = 'Hide Game Action Log ▲';
+  } else {
+    logSec.style.display = 'none';
+    btn.textContent = 'Expand Game Action Log ▼';
+  }
+}
 
-        function logout() { auth.signOut(); }
+function openHistoryDetail(gid) {
+  let g = historyGames.find(x => x.id === gid);
+  if(!g) return;
 
-        function openCreateGameModal() { 
-            const titleInput = document.getElementById('gameTitle');
-            if (!titleInput.value) {
-                const now = new Date();
-                titleInput.value = `Game - ${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-            }
-            document.getElementById('gameModal').classList.remove('hidden'); 
-        }
-        function closeGameModal() { document.getElementById('gameModal').classList.add('hidden'); }
+  const isAdmin = (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN');
 
-        function addGamePlayerRow() {
-            const div = document.createElement('div');
-            div.className = 'flex space-x-2';
-            div.innerHTML = `
-                <input type="text" placeholder="Name" class="g-name bg-slate-950 border border-slate-800 p-2 rounded-lg text-xs text-slate-100 w-1/2">
-                <input type="number" placeholder="Buy-in" class="g-buyin bg-slate-950 border border-slate-800 p-2 rounded-lg text-xs text-slate-100 w-1/2">
-            `;
-            document.getElementById('gamePlayersInput').appendChild(div);
-        }
+  document.getElementById('histModalTitle').textContent = g.title;
+  document.getElementById('histModalMeta').textContent = `${g.date} · Blinds ₹${g.small}/₹${g.big} · Buy-in ₹${g.cash}`;
 
-        async function saveGame() {
-            const title = document.getElementById('gameTitle').value;
-            const names = document.querySelectorAll('.g-name');
-            const buyins = document.querySelectorAll('.g-buyin');
+  let playersHtml = g.players.map(p => {
+    let pl = p.finalPL || 0;
+    let plFormatted = (pl >= 0 ? '+' : '-') + '₹' + Math.abs(pl).toLocaleString('en-IN');
+    let plClass = pl >= 0 ? 'pos' : 'neg';
 
-            let players = [];
-            names.forEach((el, idx) => {
-                if (el.value) {
-                    players.push({ name: el.value, buyin: Number(buyins[idx].value || 0) });
-                }
-            });
+    return `
+      <div class="card" style="background:#11150f;margin-bottom:6px;padding:8px 10px">
+        <div class="row">
+          <div>
+            <b>${p.name}</b>
+            <div class="sub">Buy-ins: ${p.buyins} · Final Chips: ${p.finalChips || 0}</div>
+          </div>
+          <b class="${plClass}">${plFormatted}</b>
+        </div>
+      </div>
+    `;
+  }).join('');
 
-            if (!title || players.length === 0) return alert('Enter a game title and at least one player.');
+  let settlementsHtml = g.settlements && g.settlements.length > 0 ? `
+    <div class="row" style="margin-top:10px">
+      <h3>Final Minimal Settlements</h3>
+      <div style="display:flex;gap:4px">
+        <button class="btn-copy" onclick="copyGameSummaryText(${g.id})">📋 Copy Summary</button>
+        ${isAdmin ? `<button class="btn-delete" onclick="deleteHistoryGame(${g.id})">🗑️ Delete Session</button>` : ''}
+      </div>
+    </div>
+    ${g.settlements.map(s => `
+      <div class="settle-card">
+        <div class="row">
+          <div><b>${s.from}</b> pays <b>${s.to}</b></div>
+          <b class="count">₹${s.amount.toLocaleString('en-IN')}</b>
+        </div>
+      </div>
+    `).join('')}
+  ` : '<div class="notice">No settlement transfers required.</div>';
 
-            await db.collection('games').add({
-                title: title,
-                createdById: currentUser.uid,
-                createdByEmail: currentUser.email,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                players: players,
-                status: 'active'
-            });
+  let logsHtml = g.logs && g.logs.length > 0 ? `
+    <div style="margin-top:10px">
+      <button id="histLogToggleBtn" style="width:100%" onclick="toggleLogVisibility()">Expand Game Action Log ▼</button>
+      <div id="histLogContainer" style="display:none;margin-top:8px">
+        ${g.logs.slice().reverse().map(l => `
+          <div class="tx">
+            <div><b>${l.action}</b><div class="sub">${l.details}</div></div>
+            <div class="sub">${l.time}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  ` : '';
 
-            closeGameModal();
-        }
+  document.getElementById('histModalContent').innerHTML = playersHtml + settlementsHtml + logsHtml;
+  document.getElementById('historyModal').classList.add('show');
+}
 
-        function loadGames() {
-            db.collection('games').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
-                const list = document.getElementById('gamesList');
-                list.innerHTML = '';
+function renderLedger() {
+  if(!activeGame) {
+    document.getElementById('cashIn').textContent = '₹0';
+    document.getElementById('chipsIn').textContent = '0';
+    document.getElementById('activePlayerCount').textContent = '0';
+    document.getElementById('ledgerList').innerHTML = `<div class="muted">No active game session.</div>`;
+    return;
+  }
 
-                if (snapshot.empty) {
-                    list.innerHTML = '<p class="text-slate-500 text-xs text-center py-8">No past games recorded yet.</p>';
-                    return;
-                }
+  let cashTotal = activeGame.players.reduce((s,p) => s + p.cash, 0);
+  let chipTotal = activeGame.players.reduce((s,p) => s + p.chips, 0);
+  let activeCount = activeGame.players.filter(p => p.active).length;
 
-                snapshot.forEach(doc => {
-                    const game = doc.data();
-                    const isOwner = currentUser && game.createdById === currentUser.uid;
-                    const canDelete = userRole === 'superadmin' || isOwner;
+  document.getElementById('cashIn').textContent = '₹' + cashTotal.toLocaleString('en-IN');
+  document.getElementById('chipsIn').textContent = chipTotal.toLocaleString('en-IN');
+  document.getElementById('activePlayerCount').textContent = activeCount;
 
-                    let actionButtons = '';
-                    if (game.status === 'DELETE_PENDING') {
-                        actionButtons = `<span class="text-[10px] text-amber-400 font-bold italic">Deletion Pending</span>`;
-                    } else if (canDelete) {
-                        actionButtons = `<button onclick="requestGameDelete('${doc.id}')" class="text-[10px] font-bold bg-red-950/60 text-red-400 border border-red-900/50 hover:bg-red-900 px-2 py-1 rounded">Delete</button>`;
-                    }
+  document.getElementById('ledgerList').innerHTML = activeGame.logs.slice().reverse().map(l => `
+    <div class="tx">
+      <div><b>${l.action}</b><div class="sub">${l.details}</div></div>
+      <div class="sub">${l.time}</div>
+    </div>
+  `).join('');
+}
 
-                    const card = document.createElement('div');
-                    card.className = 'bg-slate-900 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center shadow';
-                    card.innerHTML = `
-                        <div>
-                            <h3 class="font-bold text-slate-200 text-xs">${game.title}</h3>
-                            <p class="text-[10px] text-slate-400 pt-0.5">Host: ${game.createdByEmail} • Players: ${game.players ? game.players.length : 0}</p>
-                        </div>
-                        <div>${actionButtons}</div>
-                    `;
-                    list.appendChild(card);
-                });
-            });
-        }
+function renderAll() {
+  renderQuickView();
+  renderLedger();
+  renderLeaderboard();
+  renderOverallStats();
+  renderHistory();
+}
 
-        async function requestGameDelete(gameId) {
-            if (userRole === 'superadmin') {
-                if (confirm('Permanently delete this game?')) {
-                    await db.collection('games').doc(gameId).delete();
-                }
-            } else if (userRole === 'admin') {
-                if (confirm('Request Super Admin to approve deletion?')) {
-                    await db.collection('games').doc(gameId).update({ status: 'DELETE_PENDING' });
-                    alert('Deletion request submitted to Super Admin.');
-                }
-            }
-        }
-
-        function loadApprovals() {
-            db.collection('games').where('status', '==', 'DELETE_PENDING').onSnapshot(snapshot => {
-                document.getElementById('approvalCount').innerText = snapshot.size;
-                const list = document.getElementById('approvalsList');
-                list.innerHTML = snapshot.empty ? '<p class="text-slate-500 text-xs text-center py-6">No pending approvals.</p>' : '';
-
-                snapshot.forEach(doc => {
-                    const game = doc.data();
-                    const item = document.createElement('div');
-                    item.className = 'bg-slate-900 p-3 rounded-xl border border-slate-800 flex justify-between items-center';
-                    item.innerHTML = `
-                        <div>
-                            <h4 class="font-bold text-xs">${game.title}</h4>
-                            <p class="text-[10px] text-slate-400">By: ${game.createdByEmail}</p>
-                        </div>
-                        <div class="space-x-1">
-                            <button onclick="confirmDelete('${doc.id}')" class="bg-red-600 hover:bg-red-500 text-white text-[10px] px-2 py-1 rounded font-bold uppercase">Approve</button>
-                            <button onclick="rejectDelete('${doc.id}')" class="bg-slate-800 text-slate-300 text-[10px] px-2 py-1 rounded font-bold">Reject</button>
-                        </div>
-                    `;
-                    list.appendChild(item);
-                });
-            });
-        }
-
-        async function confirmDelete(gameId) { await db.collection('games').doc(gameId).delete(); }
-        async function rejectDelete(gameId) { await db.collection('games').doc(gameId).update({ status: 'active' }); }
-
-        async function addAdminRole() {
-            const email = document.getElementById('newAdminEmail').value.trim();
-            if (!email) return;
-
-            const snapshot = await db.collection('users').where('email', '==', email).get();
-            if (snapshot.empty) {
-                alert('User must register/log in once before being granted Admin status.');
-                return;
-            }
-
-            snapshot.forEach(async doc => {
-                await db.collection('users').doc(doc.id).update({ role: 'admin' });
-            });
-
-            document.getElementById('newAdminEmail').value = '';
-            alert(`${email} promoted to Admin.`);
-        }
-
-        function loadAdminsList() {
-            db.collection('users').where('role', 'in', ['admin', 'superadmin']).onSnapshot(snapshot => {
-                const list = document.getElementById('adminsList');
-                list.innerHTML = '';
-                snapshot.forEach(doc => {
-                    const u = doc.data();
-                    const item = document.createElement('div');
-                    item.className = 'py-2 flex justify-between items-center text-xs';
-                    item.innerHTML = `<span class="text-slate-300">${u.email}</span><span class="text-[10px] font-black uppercase text-amber-400">${u.role}</span>`;
-                    list.appendChild(item);
-                });
-            });
-        }
-
-        function loadLeaderboard() {
-            db.collection('games').onSnapshot(snapshot => {
-                let stats = {};
-                snapshot.forEach(doc => {
-                    const game = doc.data();
-                    if (game.players) {
-                        game.players.forEach(p => {
-                            if (!stats[p.name]) stats[p.name] = { games: 0, totalBuyin: 0 };
-                            stats[p.name].games += 1;
-                            stats[p.name].totalBuyin += Number(p.buyin || 0);
-                        });
-                    }
-                });
-
-                const list = document.getElementById('leaderboardList');
-                list.innerHTML = '';
-
-                const sortedPlayers = Object.keys(stats).sort((a, b) => stats[b].games - stats[a].games);
-                if (sortedPlayers.length === 0) {
-                    list.innerHTML = '<p class="text-slate-500 text-xs text-center py-6">No game stats available.</p>';
-                    return;
-                }
-
-                sortedPlayers.forEach(player => {
-                    const item = document.createElement('div');
-                    item.className = 'py-2.5 flex justify-between items-center text-xs';
-                    item.innerHTML = `
-                        <span class="font-bold text-slate-200">${player}</span>
-                        <span class="text-[11px] text-slate-400 font-mono">Games: ${stats[player].games} | Buy-ins: $${stats[player].totalBuyin}</span>
-                    `;
-                    list.appendChild(item);
-                });
-            });
-        }
-
-        function addPotPlayerInput() {
-            const div = document.createElement('div');
-            div.className = 'flex space-x-2';
-            div.innerHTML = `
-                <input type="text" placeholder="Player Name" class="pot-player bg-slate-950 border border-slate-800 p-2 rounded-lg text-xs text-slate-100 w-1/2 focus:outline-none focus:border-amber-500">
-                <input type="number" placeholder="Bet Amount" class="pot-stack bg-slate-950 border border-slate-800 p-2 rounded-lg text-xs text-slate-100 w-1/2 focus:outline-none focus:border-amber-500">
-            `;
-            document.getElementById('potInputs').appendChild(div);
-        }
-
-        function calculatePots() {
-            const players = document.querySelectorAll('.pot-player');
-            const stacks = document.querySelectorAll('.pot-stack');
-            
-            let data = [];
-            players.forEach((p, idx) => {
-                const val = Number(stacks[idx].value);
-                if (p.value && val > 0) data.push({ name: p.value, stack: val });
-            });
-
-            if (data.length === 0) return;
-
-            data.sort((a, b) => a.stack - b.stack);
-
-            let pots = [];
-            let prevStack = 0;
-
-            for (let i = 0; i < data.length; i++) {
-                let diff = data[i].stack - prevStack;
-                if (diff > 0) {
-                    let eligible = data.slice(i).map(x => x.name);
-                    let potAmount = diff * eligible.length;
-                    pots.push({ amount: potAmount, eligible: eligible });
-                    prevStack = data[i].stack;
-                }
-            }
-
-            let output = 'Main Pot: $' + (pots[0] ? pots[0].amount : 0) + ' (' + (pots[0] ? pots[0].eligible.join(', ') : '') + ')\n';
-            for (let i = 1; i < pots.length; i++) {
-                output += `Side Pot ${i}: $${pots[i].amount} (${pots[i].eligible.join(', ')})\n`;
-            }
-
-            const resDiv = document.getElementById('potResults');
-            resDiv.innerText = output;
-            resDiv.classList.remove('hidden');
-        }
-    </script>
+renderAll();
+</script>
 </body>
 </html>
