@@ -1139,14 +1139,19 @@ function generateShareText(g) {
 
   text += `\n*Individual Results:*\n`;
   g.players.filter(p => p.active).forEach(p => {
+    let finalChips = p.finalChips || 0;
+    let chipVal = Math.round((finalChips / g.chips) * g.cash);
     let pl = p.finalPL || 0;
     let sign = pl >= 0 ? '+' : '-';
-    text += `• ${p.name}: ${sign}₹${Math.abs(pl).toLocaleString('en-IN')}\n`;
+    let buyinText = `${p.buyins} ${p.buyins === 1 ? 'Buy-in' : 'Buy-ins'}`;
+    
+    text += `• ${p.name}: ${buyinText} (₹${p.cash.toLocaleString('en-IN')}) | Chips Returned: ${finalChips.toLocaleString('en-IN')} (₹${chipVal.toLocaleString('en-IN')}) | P/L: ${sign}₹${Math.abs(pl).toLocaleString('en-IN')}\n`;
   });
 
   text += `\n_Recorded on Potluck Poker_ 🚀`;
   return text;
 }
+
 
 function copyGameSummaryText(gid) {
   let g = historyGames.find(x => x.id === gid);
