@@ -1,18 +1,18 @@
 {
   "name": "Potluck Poker",
   "short_name": "PotluckPoker",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
-  "background_color": "#121212",
-  "theme_color": "#121212",
+  "background_color": "#0d100c",
+  "theme_color": "#0d100c",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icon-512.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
